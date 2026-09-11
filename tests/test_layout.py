@@ -1,4 +1,6 @@
-"""Regression tests for routing, junction semantics and verification.
+"""Unit tests for the routing and junction primitives.
+
+Whole-converter behaviour is covered by test_pipeline.py.
 
 Most of these guard against a single class of bug: coordinates in the master
 symbol sheet are rounded to three decimals, so a pin can sit a fraction of a
@@ -76,30 +78,6 @@ class TestRouting(unittest.TestCase):
     def test_edge_graze_within_tolerance_is_not_a_collision(self):
         body = (0, 0, 10, 10.000333)
         self.assertFalse(router.seg_penetrates(((0, 10), (20, 10)), body))
-
-
-class TestExamples(unittest.TestCase):
-    """Both examples must pass every mandatory check."""
-
-    def _check(self, module_name):
-        import importlib
-        mod = importlib.import_module(module_name)
-        out = os.path.join(ROOT, 'out', module_name.split('.')[-1] + '.svg')
-        _, report = mod.build(out)
-        self.assertTrue(report.passed, str(report))
-        return report
-
-    def test_buck(self):
-        r = self._check('examples.buck_converter')
-        self.assertEqual(r.metrics['wire_crossing'], 0)
-        self.assertEqual(r.metrics['extra_bend'], 0)
-
-    def test_three_phase(self):
-        r = self._check('examples.three_phase_inverter')
-        self.assertEqual(r.metrics['symmetry_error'], 0)
-        self.assertEqual(r.metrics['extra_bend'], 0)
-        # phase A must clear legs B and C, phase B must clear leg C
-        self.assertEqual(r.metrics['wire_crossing'], 3)
 
 
 if __name__ == '__main__':

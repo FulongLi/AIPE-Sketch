@@ -17,7 +17,7 @@ from aipe_sketch import router
 from aipe_sketch.router import TOL
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'Inkscape_Symbols_All.svg')
+from aipe_sketch.paths import MASTER as SRC
 
 
 class TestJunctions(unittest.TestCase):

@@ -16,7 +16,7 @@ from aipe_sketch import symlib
 from aipe_sketch.pins import PARTS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'Inkscape_Symbols_All.svg')
+from aipe_sketch.paths import MASTER as SRC
 NS = symlib.NS
 
 COLS, CW, CH = 8, 26.0, 28.0

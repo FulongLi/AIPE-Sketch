@@ -69,6 +69,13 @@ class TestLookupPriority(unittest.TestCase):
                 self.assertEqual(registry()[sub].source, LIBRARY,
                                  f'{kind} assembles from non-library {sub}')
 
+    def test_the_transformer_comes_from_the_library(self):
+        """It was a hand-assembled compound until the sheet's own symbol
+        was recovered by handling rotate/scale transforms."""
+        spec = registry()['transformer']
+        self.assertEqual(spec.source, LIBRARY)
+        self.assertEqual(spec.symbol_id, 'g7138')
+
     def test_custom_geometry_is_a_last_resort_and_justified(self):
         custom = [k for k, s in registry().items() if s.source == CUSTOM]
         self.assertEqual(custom, ['terminal'],
@@ -217,8 +224,8 @@ class TestAudit(unittest.TestCase):
         for kind, spec in registry().items():
             self.assertIn(kind, text)
         self.assertIn('library', text)
-        self.assertIn('compound', text)
         self.assertIn('custom', text)
+        self.assertIn('from the library', text)
 
     def test_report_matches_the_registry(self):
         for row in registry().audit():

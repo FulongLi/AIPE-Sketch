@@ -82,11 +82,18 @@ class Symbol:
         x0,y0,x1,y1 = self.bbox
         return ((x0+x1)/2.0, (y0+y1)/2.0)
 
-    def body(self):
-        """Children without <title>, deep-copied."""
-        out=[]
+    def body(self, keep=None):
+        """Children without <title>, deep-copied.
+
+        ``keep`` names the child ids to retain, which is how a wrapper that
+        also encloses neighbouring geometry is reduced to just its device.
+        """
+        out = []
         for c in self.el:
-            if c.tag == NS+'title': continue
+            if c.tag == NS + 'title':
+                continue
+            if keep is not None and c.get('id') not in keep:
+                continue
             out.append(copy.deepcopy(c))
         return out
 

@@ -314,23 +314,36 @@ class TestTransformer(unittest.TestCase):
                     self.assertAlmostEqual(part.bbox[2] - part.bbox[0], want,
                                            places=6, msg=f'{name}/{ref}')
 
-    def test_windings_sit_against_the_core(self):
+    def test_it_comes_from_the_library_not_a_hand_built_compound(self):
         registry = Registry(symlib.load(build.SRC)[1])
         spec = registry['transformer']
-        span = spec.compound['winding_span']
-        self.assertLessEqual(spec.width / span, 2.0)
-        self.assertLessEqual(spec.width, 4 * G,
-                             'a transformer wider than it is tall reads as '
-                             'two inductors')
+        self.assertEqual(spec.source, 'library')
+        self.assertEqual(spec.symbol_id, 'g7138')
+        self.assertTrue(spec.cleaned,
+                        'the wrapper also encloses neighbouring geometry')
 
-    def test_ports_get_a_straight_entry_segment(self):
+    def test_it_reads_as_one_device(self):
         registry = Registry(symlib.load(build.SRC)[1])
         spec = registry['transformer']
-        horizontal = [s for s in spec.decor['strokes']
-                      if abs(s[0][1] - s[1][1]) < 1e-9]
-        self.assertEqual(len(horizontal), 4, 'one entry segment per port')
-        lengths = {round(abs(s[1][0] - s[0][0]), 6) for s in horizontal}
-        self.assertEqual(len(lengths), 1, 'entry segments must be equal')
+        self.assertLessEqual(spec.width / spec.height, 1.5,
+                             'wider than tall reads as two inductors')
+        self.assertAlmostEqual(spec.height, 4 * G, places=2,
+                               msg='must keep the library 4 G height')
+
+    def test_both_windings_are_present(self):
+        """The secondary is a rotate(180) copy; losing it was the old bug."""
+        from aipe_sketch.pins import PARTS
+        keep = PARTS['transformer']['keep']
+        coils = [k for k in keep if k.startswith('g6472')]
+        self.assertEqual(len(coils), 2, f'expected two windings, got {coils}')
+
+    def test_ports_are_symmetric_about_the_core(self):
+        registry = Registry(symlib.load(build.SRC)[1])
+        ports = registry['transformer'].ports
+        self.assertAlmostEqual(ports['p1'][0], -ports['s1'][0], places=3)
+        self.assertAlmostEqual(ports['p2'][0], -ports['s2'][0], places=3)
+        for a, b in (('p1', 's1'), ('p2', 's2')):
+            self.assertAlmostEqual(ports[a][1], ports[b][1], places=3)
 
 
 class TestLocalScale(unittest.TestCase):
@@ -364,11 +377,14 @@ class TestRegistry(unittest.TestCase):
             _, card, _, _ = built(name)
             self.assertEqual(card.raw['custom_symbols'], 0, name)
 
-    def test_compounds_are_assembled_from_library_symbols(self):
+    def test_any_compound_is_assembled_from_library_symbols(self):
         registry = Registry(symlib.load(build.SRC)[1])
-        tx = registry['transformer']
-        self.assertTrue(all(sub in registry
-                            for sub, *_ in tx.compound['symbols']))
+        for kind, spec in registry.items():
+            if spec.source != 'compound':
+                continue
+            for sub, *_ in spec.compound['symbols']:
+                self.assertEqual(registry[sub].source, 'library',
+                                 f'{kind} assembles from non-library {sub}')
 
     def test_visual_margin_is_symbol_specific(self):
         registry = Registry(symlib.load(build.SRC)[1])

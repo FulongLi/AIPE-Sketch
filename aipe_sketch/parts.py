@@ -21,17 +21,7 @@ LIBRARY = 'library'          # one <symbol> instantiated from the master sheet
 COMPOUND_SRC = 'compound'    # assembled from library symbols plus primitives
 CUSTOM = 'custom'            # drawn here because the sheet offers nothing
 
-# ------------------------------------------------------------------ transformer
-# The sheet's transformer <symbol> wrappers enclose geometry scattered across
-# the whole drawing, so they cannot be instantiated.  It is assembled instead
-# from the library's own coil, using the proportions measured off the sheet's
-# own transformer: two core bars 1.325 mm apart spanning the full symbol
-# height, with the windings hard against them.
-_COIL_BULGE = 1.058          # the coil symbol bulges this far off its axis
-_CORE_X = 0.6625             # core bar offset from centre (1.325 mm apart)
-_WIND_X = 0.75 * G           # winding axis offset -- coil edge meets the core
-_LEAD = 1.0 * G              # straight terminal entry segment, per port
-_TX_HALF = _WIND_X + _LEAD
+# ------------------------------------------------------------------ compounds
 
 COMPOUND = {
     # An external interface point.  It draws nothing but an open circle, and
@@ -44,27 +34,6 @@ COMPOUND = {
                      reason='the sheet has no open-circle interface marker; '
                             'its only lone circles are filled GND glyphs'),
 
-    'transformer': dict(
-        role='isolation',
-        # (symbol kind, dx, dy, rot, mirror) in millimetres from the centre
-        symbols=[('ind', -_WIND_X, 0, 0, False),
-                 ('ind', _WIND_X, 0, 0, True)],
-        strokes=[((-_CORE_X, -H), (-_CORE_X, H)),
-                 ((_CORE_X, -H), (_CORE_X, H)),
-                 # short straight entry segment at each port
-                 ((-_WIND_X, -H), (-_TX_HALF, -H)),
-                 ((-_WIND_X, H), (-_TX_HALF, H)),
-                 ((_WIND_X, -H), (_TX_HALF, -H)),
-                 ((_WIND_X, H), (_TX_HALF, H))],
-        ports={'p1': (-_TX_HALF, -H), 'p2': (-_TX_HALF, H),
-               's1': (_TX_HALF, -H), 's2': (_TX_HALF, H)},
-        bbox=(-_TX_HALF, -H, _TX_HALF, H),
-        winding_span=2 * (_WIND_X + _COIL_BULGE),
-        source=COMPOUND_SRC,
-        reason='every transformer <symbol> on the sheet encloses geometry '
-               'scattered across the whole drawing and cannot be '
-               'instantiated; assembled from the library coil instead',
-    ),
 }
 
 # ------------------------------------------------------------------ decoration
@@ -162,7 +131,7 @@ class SymbolSpec:
     """Everything the placer, router and renderer need about one kind."""
 
     def __init__(self, kind, symbol_id, ports, bbox, role, compound=None,
-                 default_rotation=0):
+                 default_rotation=0, cleaned=None):
         self.kind = kind
         self.symbol_id = symbol_id
         self.default_rotation = default_rotation
@@ -183,6 +152,11 @@ class SymbolSpec:
         else:
             self.source = LIBRARY
             self.reason = DECOR.get(kind, {}).get('reason', '')
+            if cleaned:
+                self.reason = (self.reason + '; ' if self.reason else '') + \
+                    'wrapper also encloses neighbouring geometry, so only ' \
+                    'the device\'s own children are kept'
+        self.cleaned = bool(cleaned)
         style = LABEL_STYLE.get(role, LABEL_STYLE['generic'])
         self.label_side = style['side']
         self.label_offset = style['offset']
@@ -215,6 +189,8 @@ class SymbolSpec:
         """One line naming where this symbol's geometry comes from."""
         if self.source == LIBRARY:
             text = f'{LIBRARY} {self.symbol_id}'
+            if self.cleaned:
+                text += ' (cleaned)'
             if self.decorated:
                 text += ' + marks'
             return text
@@ -261,10 +237,23 @@ class Registry:
             sym = symbols[entry['sym']]
             ax, ay = entry['anchor']
             x0, y0, x1, y1 = sym.bbox
+            keep = entry.get('keep')
+            if keep:                      # measure only the kept children
+                xs, ys = [], []
+                for child in sym.el:
+                    if child.get('id') not in keep:
+                        continue
+                    from . import library as _lib
+                    px, py = [], []
+                    _lib._walk(child, _lib.IDENTITY, px, py)
+                    xs += px
+                    ys += py
+                if xs:
+                    x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
             self._specs[kind] = SymbolSpec(
                 kind, entry['sym'], dict(entry['pins']),
                 (x0 - ax, y0 - ay, x1 - ax, y1 - ay),
-                ROLES.get(kind, 'generic'))
+                ROLES.get(kind, 'generic'), cleaned=keep)
         for kind, entry in COMPOUND.items():
             self._specs[kind] = SymbolSpec(
                 kind, None, dict(entry['ports']), entry['bbox'],

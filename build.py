@@ -12,7 +12,7 @@ from aipe_sketch.pipeline import Schematic
 from aipe_sketch.topologies import CATALOGUE
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(ROOT, 'Inkscape_Symbols_All.svg')
+from aipe_sketch.paths import MASTER as SRC
 
 
 def build(name, out_dir=None):

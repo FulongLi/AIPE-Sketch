@@ -52,7 +52,7 @@ class Sketch:
             ax, ay = spec['anchor']
             g = ET.SubElement(self.defs, NS + 'g',
                               {'id': gid, 'transform': f'translate({-ax},{-ay})'})
-            for child in self.symbols[spec['sym']].body():
+            for child in self.symbols[spec['sym']].body(spec.get('keep')):
                 g.append(child)
             self._emitted.add(gid)
         return gid

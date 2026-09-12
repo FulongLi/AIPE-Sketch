@@ -11,8 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from aipe_sketch import symlib
 
-SRC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                   'Inkscape_Symbols_All.svg')
+from aipe_sketch.paths import MASTER as SRC
 
 
 def report(sym):

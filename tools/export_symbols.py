@@ -30,7 +30,7 @@ from aipe_sketch.pins import COARSE as G
 from aipe_sketch.sketch import Sketch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'Inkscape_Symbols_All.svg')
+from aipe_sketch.paths import GENERATED as OUT, MASTER as SRC
 OUT = os.path.join(ROOT, 'assets', 'generated_symbols')
 AIPE_NS = 'https://github.com/AIPE-Sketch/symbol'
 PAD = 2.0                      # millimetres of margin around the symbol

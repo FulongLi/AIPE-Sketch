@@ -601,18 +601,22 @@ def _penetration(seg, cx, cy, r):
 
 # ------------------------------------------------------------------ rule 17
 def transformer_spread(placed):
-    """A transformer's internal geometry is fixed and must stay that way."""
+    """A transformer must read as one device, not two inductors.
+
+    Measured as width against height: every symbol on the sheet is one
+    component dimension tall, so a transformer much wider than that has its
+    windings spread too far apart to read as a single component.
+    """
     faults, ratios = [], {}
     for ref, part in placed.items():
-        compound = part.spec.compound
-        if not compound or 'winding_span' not in compound:
+        if part.spec.role != 'isolation':
             continue
-        span = compound['winding_span']
-        ratio = part.spec.width / span
+        height = part.spec.height or 1e-6
+        ratio = part.spec.width / height
         ratios[ref] = round(ratio, 3)
-        if ratio > 2.0:
-            faults.append(f'{ref}: symbol is {ratio:.2f}x its winding span; '
-                          f'the windings read as separate inductors')
+        if ratio > 1.5:
+            faults.append(f'{ref}: {ratio:.2f}x wider than tall; the '
+                          f'windings read as separate inductors')
     return faults, ratios
 
 

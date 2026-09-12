@@ -155,6 +155,99 @@ definitions. It catches both anti-patterns by name:
 
 Tests inject both to confirm the check can fail.
 
+## Extracted component library
+
+The master sheet is split into a clean, per-section library:
+
+```
+assets/master/Inkscape_Symbols_All.svg      canonical, never generated
+assets/generated_symbols/<section>/*.svg    derived, regenerate freely
+assets/symbol_registry.json                 the index
+out/catalog_<section>.svg                   review catalogues
+out/library_report.{txt,json}               inspection report
+```
+
+```bash
+python3 tools/extract_library.py --report
+python3 tools/extract_library.py --section standard_elements --catalog
+python3 tools/extract_library.py --all --catalog
+```
+
+**191 symbols across 14 sections; 158 clean, 33 need cleaning.** Sections are
+detected from the sheet's own headings, not assumed — heading-sized text is
+matched against the real section titles so an in-drawing `+`, `n:1` or `f(t)`
+is never mistaken for one.
+
+### Clustering is what makes this work
+
+Many `<symbol>` wrappers enclose geometry from neighbouring drawings, so their
+bounding boxes are meaningless — `g7138` claims 144 mm for a 10 mm device.
+Grouping each wrapper's children by proximity separates the device from the
+strays. The largest cluster is the device; the rest are flagged, never
+discarded.
+
+Two bugs had to be fixed before this was trustworthy, both found by looking at
+the rendered catalogue rather than the numbers:
+
+* **Transforms were only half handled.** First `translate` was ignored
+  entirely — `g10556` wraps a diode in a group carrying `translate(19.84)` and
+  extracted as a doubled symbol. Then `rotate` and `scale` were still ignored,
+  which is what hid the transformer's secondary winding. Geometry is now
+  walked with a full affine matrix stack (translate, scale, rotate about a
+  centre, matrix, skew).
+* **A symbol is placed by its `<use>`, not its own frame.** Section assignment
+  read symbol-local coordinates, putting the battery under *Designators*.
+  Using the page position fixed the inventory.
+
+The cluster gap is 2 mm: above ~1.6 mm a capacitor's plates stay together,
+and much above 2 mm neighbouring components on the sheet start merging — which
+is what made `Resistor_US` extract with a MOSFET on top of it.
+
+### Provenance
+
+Every extracted file and registry entry records `semantic_name`,
+`original_symbol_id`, `source_section`, `source_file`, `original_bbox`,
+`clean_bbox`, `anchor`, `default_orientation`, `status` and
+`source_type: extracted_library`. Variants are kept distinct rather than
+overwritten (`capacitor` / `capacitor_polarised`, `inductor_air_core` /
+`inductor_cored`, `mosfet_n_enhancement` / `mosfet_n_depletion`); where the
+`<title>` alone is ambiguous the symbol id is appended.
+
+`source_version` is a digest of the master, so extraction is reproducible — a
+test re-runs it and compares bytes.
+
+### Transformers
+
+All ten candidates were extracted, cleaned and rendered. The first pass
+concluded no wrapper held a complete two-winding device — that conclusion was
+wrong, and the catalogue is what exposed it.
+
+`g7138` draws its **secondary winding as a `rotate(180)` copy** of the primary,
+and `path5746` carries `scale(-1)`. The extractor only parsed `translate`, so
+the secondary was measured 10 mm away from where it draws and fell outside the
+device cluster. With full affine transforms the wrapper yields the complete
+symbol:
+
+| | before | after |
+|---|---|---|
+| `g7138` cleaned | 5.7 × 10.6, primary + core only | **6.6 × 10.6, both windings, core, polarity dots** |
+| `g5846`, `g5868` | empty housing boxes | boxes with their windings drawn |
+| `g8072`, `g8142`, `g8123`, `g6295`, `g21122`, `g33442` | outlines | complete vector-group symbols |
+
+`g7138` is now the transformer the schematics use, and the hand-assembled
+compound is gone. The registry reports it as `library g7138 (cleaned)`:
+
+```
+14 from the library, 0 assembled, 1 custom
+  terminal: the sheet has no open-circle interface marker
+  transformer: wrapper also encloses neighbouring geometry, so only the
+               device's own children are kept
+```
+
+`pins.py` names the six child ids to keep. The coupling arrow and the `n:1`
+text are left out — they are annotations, and dropping them keeps the symbol
+at the library's 4 G height. Nothing is redrawn.
+
 ## Symbol registry
 
 `Inkscape_Symbols_All.svg` → `symlib` parser → `parts.Registry` → renderer,
@@ -266,17 +359,10 @@ library symbol: `+` and `\u2212` inside the circle with the plus toward the
 positive terminal, and a current source gets a shaft-and-head arrow pointing
 from the current-entry terminal to the current-exit one.
 
-The transformer is the one compound. Every transformer `<symbol>` on the sheet
-encloses geometry scattered across the whole drawing and cannot be
-instantiated, so it is assembled from the library's **own coil**, using
-proportions measured off the sheet's own transformer: two core bars 1.325 mm
-apart spanning the full symbol height, windings hard against them, and an
-equal straight entry segment at each of the four ports.
-
-It is 3.5 G × 4.0 G — a spread ratio of 1.52 against its winding span. The
-first version had the winding axes 10.6 mm apart and read as *inductor, core,
-inductor*; `transformer_spread` now fails any ratio above 2.0, and a test
-asserts the compound's width never changes with group pitch.
+The transformer comes from the sheet as well — `g7138`, cleaned to its own six
+child elements. It is 2.5 G × 4.0 G, a width-to-height ratio of 0.63;
+`transformer_spread` fails anything wider than tall, since a spread-out
+transformer reads as two separate inductors.
 
 ## Netlist as source of truth
 
@@ -383,7 +469,7 @@ ones. `tests/test_layout.py` pins all of it down.
 
 ## Symbol library
 
-`Inkscape_Symbols_All.svg` is the
+`assets/master/Inkscape_Symbols_All.svg` is the
 [UPB-LEA Inkscape electric symbols](https://github.com/upb-lea/Inkscape_electric_Symbols)
 sheet: 196 `<symbol>` definitions with `<title>` names, everything on a
 2.6458 mm grid, and nearly every two-terminal symbol exactly 10.583 mm tall —
@@ -406,8 +492,8 @@ output port at all.
 
 ## Known limits
 
-* **The DAB's far-leg transformer run is unavoidably long** — 3.75 CELL
-  against 1.75 for the near leg. A full bridge's outer leg has to reach past
+* **The DAB's far-leg transformer run is unavoidably long** — 3.69 CELL
+  against 1.69 for the near leg. A full bridge's outer leg has to reach past
   the inner one, so the two connections cannot be equal length. Reported by
   check 10 rather than hidden.
 * **Placement is plan-driven, not automatic.** The placer is deterministic and
@@ -428,6 +514,16 @@ output port at all.
   series resonant path, so the "one horizontal centreline with comparable
   spacing" rule has no example behind it.
 * **The scale threshold of four is a judgement call**, not a derived number.
+* **The extracted library is not wired into rendering yet.** Milestone one was
+  extraction; `parts.Registry` still parses the master directly. Pointing it at
+  `assets/symbol_registry.json` is milestone two.
+* **Port geometry is not extracted.** The registry carries `port_candidates`
+  (free path endpoints) and real `ports` only for the 15 kinds already curated
+  in `pins.py`. Ports for the other 176 are unknown, and are reported as
+  `null` rather than guessed.
+* **Section assignment is a heuristic** — nearest heading above, biased toward
+  the symbol's own column. It is right for the dense left-hand sections; the
+  sparse right-hand ones (`lines` holds 48) are plausibly over-broad.
 * **The full bridge's load sits 0.5 D from each leg**, below the 0.75 D band.
   The load symbol is 4 G long and the legs are 8 G apart, so only 2 G remains
   on each side. Widening the legs to 12 G would fix the band at the cost of

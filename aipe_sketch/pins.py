@@ -56,6 +56,17 @@ PARTS = {
     'igbt':     dict(sym='g13197', anchor=(31.750, 148.1665),
                      pins={'c': (0, -H), 'e': (0, H), 'g': _GATE}),
 
+    # --- magnetics ---------------------------------------------------
+    # The sheet's own two-winding transformer.  Its wrapper also encloses
+    # geometry from neighbouring drawings, so only the device's own children
+    # are kept; the coupling arrow above it is an annotation, like the 'n:1'
+    # text, and is left out so the symbol keeps the library's 4 G height.
+    'transformer': dict(sym='g7138', anchor=(57.392, 20.159),
+                        keep=('path5742', 'path5744', 'use6557-2',
+                              'use6557-0', 'g6472-8', 'g6472-7'),
+                        pins={'p1': (-3.307, -H), 'p2': (-3.307, H),
+                              's1': (3.307, -H), 's2': (3.307, H)}),
+
     # --- misc --------------------------------------------------------
     # the GND anchor is its connection point, not a bbox centre
     'gnd':      dict(sym='g9380',  anchor=(31.884, 96.578),

@@ -94,7 +94,8 @@ class Scorecard:
                 not self.raw.get('floating_end') and
                 not self.raw.get('external_marker') and
                 not self.raw.get('transformer_spread') and
-                not self.raw.get('symbol_distortion'))
+                not self.raw.get('symbol_distortion') and
+                not self.raw.get('unplaced_labels'))
 
     def as_dict(self):
         out = dict(self.sub)

@@ -25,41 +25,70 @@ GLYPH_W, LINE_H = config.GLYPH_W, config.LINE_H
 
 
 class Schematic:
-    """One run of the pipeline for one netlist and one plan."""
+    """A schematic view of Circuit IR, with automatic or expert planning."""
 
     MARGIN = 2 * G          # breathing room around the drawn content
 
-    def __init__(self, source, netlist, plan, size=None, title=None):
+    def __init__(self, source, netlist, plan=None, size=None, title=None, text=None):
         self.source = source
         self.netlist = netlist
-        self.plan = plan
         self.fixed_size = size            # None means fit the sheet to content
         self.size = size or (0, 0)
         self.title = title or netlist.name
         self.symbols = symlib.load(source)[1]
         self.specs = build_specs(self.symbols)
 
-        problems = netlist.validate(port_table(self.symbols))
+        problems = netlist.validate() + netlist.validate(port_table(self.symbols))
         if problems:
             raise ValueError('netlist is not well formed:\n  ' +
                              '\n  '.join(problems))
 
         self.analysis = analysis.analyse(netlist)
         self.classes = analysis.repeated_classes(netlist)
-        self.placed, self.extents = placement.place(plan, netlist, self.specs)
+        self.auto = plan is None
+        if plan is None:
+            from .planner import auto_plan
+            from .grammar import lower
+            self.semantic_plan = auto_plan(netlist, self.analysis)
+            plan = lower(self.semantic_plan, netlist)
+        else:
+            self.semantic_plan = getattr(plan, 'semantic', None)
+        self.plan = plan
+        self.placed, self.extents = placement.place(plan, netlist, self.specs, text=text)
+
+        if text:
+            for ref, style in text.items():
+                part = self.placed[ref]
+                part.label, part.sub, part.italic = style.label, style.sub, style.italic
 
         regularity = placement.check_regularity(self.placed, self.classes)
         if regularity:
             raise ValueError('placement breaks a repeated structure:\n  ' +
                              '\n  '.join(regularity))
 
-        self.trunks = {}
+        self.trunks = dict(getattr(plan, "trunks", {}))
+        self._route_offset = (0.0, 0.0)
+        self.candidate_report = []
+        self.selected_candidate = None
         self.free_nets = set()
         self.paths = {}
         self.labels = []
         self.texts = []
         self._notes = []          # free annotations, kept across label rebuilds
         self.homeless_labels = []
+
+    @classmethod
+    def from_netlist(cls, circuit, *, source=None, plan=None, text=None,
+                     size=None, title=None, candidates=12):
+        """Generate a schematic view; manual geometry is an optional override."""
+        from .paths import MASTER
+        if not 1 <= candidates <= 12:
+            raise ValueError('candidate count must be between 1 and 12')
+        schematic = cls(source or MASTER, circuit, plan, size=size, title=title, text=text)
+        if plan is None and candidates > 1:
+            from .candidates import select
+            return select(schematic, candidates, text=text)
+        return schematic
 
     # -------------------------------------------------------------- routing
     def default_trunks(self):
@@ -80,7 +109,7 @@ class Schematic:
             # only a vertically stacked leg gets a vertical midpoint rail;
             # if the two devices sit side by side the caller must say where
             if abs(high.x - low.x) < 1e-6:
-                trunks[leg['mid']] = ('v', high.x / G)
+                trunks[leg['mid']] = ('v', (high.x - self._route_offset[0]) / G)
         return trunks
 
     def route(self):
@@ -89,26 +118,34 @@ class Schematic:
         obstacles = [p.bbox for p in self.placed.values()
                      if not p.spec.is_terminal]
         self.paths = {}
-        for net, members in self.netlist.nets.items():
+        ordered = list(self.netlist.nets.items())
+        if self.semantic_plan:
+            main = set(self.semantic_plan.main_power_nets)
+            ordered.sort(key=lambda entry: (entry[0] not in main, entry[0]))
+        for net, members in ordered:
             pts = [self.placed[ref].port(port) for ref, port in members]
             if len(pts) < 2:
                 continue
             spec = trunks.get(net)
+            local_trunk = False
             if spec is None and len(pts) > 2:
                 spread_x = max(p[0] for p in pts) - min(p[0] for p in pts)
                 spread_y = max(p[1] for p in pts) - min(p[1] for p in pts)
                 orient = 'h' if spread_x >= spread_y else 'v'
                 pos = router.choose_trunk(pts, orient, obstacles, G)
                 spec = (orient, pos / G)
+                local_trunk = True
             if spec is not None:
                 orient, gpos = spec
+                offset = 0.0 if local_trunk else self._route_offset[0 if orient == 'v' else 1]
                 if isinstance(gpos, str):
                     if gpos in self.plan.rows:       # a named row
                         gpos = self.plan.rows[gpos]
                     else:                            # a component's own axis
                         ref = self.placed[gpos]
                         gpos = (ref.x if orient == 'v' else ref.y) / G
-                self.paths[net] = router.route_trunk(pts, orient, gpos * G,
+                        offset = 0.0
+                self.paths[net] = router.route_trunk(pts, orient, gpos * G + offset,
                                                      obstacles)
             else:
                 self.paths[net] = [router.route_pair(pts[0], pts[1],
@@ -133,12 +170,15 @@ class Schematic:
         for note in self._notes:
             placer.reserve(note['key'], note['box'])
 
+        for part in self.placed.values():
+            part.label_keepout = None
         placements, homeless = placer.place_all()
         self.homeless_labels = homeless
         self.labels, self.texts = [], []
         for item in placements:
             part = self.placed[item['ref']]
             part.label_side = item['side']
+            part.label_keepout = item['box']
             self.labels.append((item['ref'], item['box']))
             self.texts.append(dict(x=item['x'], y=item['y'],
                                    text=item['text'], sub=item['sub'],
@@ -242,9 +282,10 @@ class Schematic:
     # -------------------------------------------------------------- scoring
     def evaluate(self):
         faults = validate.check(self.netlist, self.placed, self.paths)
-        return score.evaluate(self.netlist, self.placed, self.paths,
+        card = score.evaluate(self.netlist, self.placed, self.paths,
                               self.labels, self.classes,
-                              bounds=(0, 0, self.size[0], self.size[1]),
+                              bounds=((0, 0, self.size[0], self.size[1])
+                                      if self.size != (0, 0) else self.content_box()),
                               connectivity_faults=faults,
                               structure=self.analysis,
                               plan_groups=[
@@ -253,16 +294,28 @@ class Schematic:
                                   for g in self.plan.groups],
                               notes=self._notes,
                               registry=self.specs)
+        card.raw['unplaced_labels'] = len(self.homeless_labels)
+        if self.homeless_labels:
+            card.sub['labelling'] = max(0, card.sub['labelling'] - 20 * len(self.homeless_labels))
+            card.cost += 10000 * len(self.homeless_labels)
+            card.faults.extend(f'{ref}: label has no collision-free position'
+                               for ref in self.homeless_labels)
+        return card
 
     def repair(self):
-        """Report what the label engine could not place.
+        """Report geometry selection and any unresolved label placement.
 
-        Candidate fallback lives in the engine, so by the time a drawing
-        reaches here every label that has a legal home already has one.  What
-        remains is the genuinely impossible case, which is a layout problem
-        rather than a labelling one.
+        The automatic factory scores and repairs geometry through the bounded
+        candidate search before rendering. Manual overrides remain unchanged.
+        Every final drawing is validated again below.
         """
         log = []
+        if self.candidate_report and self.selected_candidate:
+            initial = self.candidate_report[0].get('score', 'invalid')
+            chosen = self.candidate_report[self.selected_candidate]
+            log.append(f'geometry candidate {self.selected_candidate}: '
+                       f'score {initial} -> {chosen.get("score")}; '
+                       'rerouted, relabelled and connectivity validated')
         for ref in getattr(self, 'homeless_labels', ()):
             log.append(f'no collision-free position for label {ref}')
         return self.evaluate(), log
@@ -312,6 +365,8 @@ class Schematic:
 
     def _shift(self, dx, dy):
         """Translate the whole drawing; relative geometry is untouched."""
+        self._route_offset = (self._route_offset[0] + dx,
+                              self._route_offset[1] + dy)
         for part in self.placed.values():
             part.x += dx
             part.y += dy

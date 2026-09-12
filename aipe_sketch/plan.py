@@ -1,9 +1,8 @@
-"""The logical layout plan: relationships, not coordinates.
+"""Manual geometric constraints for the schematic backend.
 
-A plan says what belongs together, what sits left of what, and which row a
-device occupies.  It never contains an x or a y.  The placer turns it into
-geometry deterministically, so equivalent topology becomes equivalent
-geometry by construction rather than by optimisation.
+Rows, slots, rotations and optional numeric offsets are expert controls. The
+coordinate-free automatic representation lives in planner.AutoPlan; grammar
+lowers it into this representation before placement resolves coordinates.
 """
 
 from .config import (CELL_G as CELL, CHAIN_NEUTRAL, CHAIN_ROLES,
@@ -61,11 +60,12 @@ class Item:
     member of a repeated structure the same offset keeps them identical.
     """
 
-    __slots__ = ('ref', 'row', 'rot', 'mirror', 'label_side', 'dx', 'dy')
+    __slots__ = ('ref', 'row', 'rot', 'mirror', 'label_side', 'dx', 'dy', 'align_port')
 
     def __init__(self, ref, row, rot=0, mirror=False, label_side=None,
                  dx=0, dy=0):
         self.ref = ref
+        self.align_port = None
         self.row = row
         self.rot = rot
         self.mirror = mirror

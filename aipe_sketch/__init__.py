@@ -1,19 +1,24 @@
-"""AIPE-Sketch: publication-quality power-electronics schematics generated
-from a netlist.
+"""Circuit IR plus optional schematic backend.
 
-The netlist is the single source of truth.  Layout and routing may only
-decide where things are drawn, never what is connected to what, and the
-finished drawing is read back and checked against the netlist before it is
-written out.
-
-    netlist -> analysis -> plan -> placement -> routing
-            -> scoring -> repair -> connectivity check -> render
+Importing Netlist does not import the SVG, placement or routing backend.
 """
+from importlib import import_module
 from .netlist import Component, Netlist
-from .pins import COARSE, GRID
-from .pipeline import Schematic
-from .plan import Group, Item, LayoutPlan, ROWS, Slot, bridge_group
-from .sketch import Sketch
 
-__all__ = ['Netlist', 'Component', 'Schematic', 'LayoutPlan', 'Group', 'Slot',
-           'Item', 'bridge_group', 'ROWS', 'Sketch', 'GRID', 'COARSE']
+_EXPORTS = {
+    'Schematic': 'pipeline', 'SchematicText': 'presentation',
+    'AutoPlan': 'planner', 'auto_plan': 'planner', 'graph_analysis': 'planner',
+    'Group': 'plan', 'Item': 'plan', 'Slot': 'plan', 'LayoutPlan': 'plan',
+    'ROWS': 'plan', 'bridge_group': 'plan', 'Sketch': 'sketch',
+    'COARSE': 'pins', 'GRID': 'pins',
+}
+__all__ = ['Netlist', 'Component', *_EXPORTS]
+
+
+def __getattr__(name):
+    module = _EXPORTS.get(name)
+    if module is None:
+        raise AttributeError(name)
+    value = getattr(import_module('.' + module, __name__), name)
+    globals()[name] = value
+    return value

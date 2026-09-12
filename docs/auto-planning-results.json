@@ -1,0 +1,128 @@
+[
+  {
+    "circuit": "buck",
+    "automatic": 97,
+    "valid": true,
+    "acceptable": true,
+    "selected": 6,
+    "candidates": 12,
+    "manual": 97
+  },
+  {
+    "circuit": "boost",
+    "automatic": 99,
+    "valid": true,
+    "acceptable": true,
+    "selected": 6,
+    "candidates": 12,
+    "manual": 99
+  },
+  {
+    "circuit": "half_bridge",
+    "automatic": 99,
+    "valid": true,
+    "acceptable": true,
+    "selected": 0,
+    "candidates": 12,
+    "manual": 99
+  },
+  {
+    "circuit": "full_bridge",
+    "automatic": 99,
+    "valid": true,
+    "acceptable": true,
+    "selected": 0,
+    "candidates": 12,
+    "manual": 99
+  },
+  {
+    "circuit": "three_phase_inverter",
+    "automatic": 97,
+    "valid": true,
+    "acceptable": true,
+    "selected": 3,
+    "candidates": 12,
+    "manual": 97
+  },
+  {
+    "circuit": "dab",
+    "automatic": 97,
+    "valid": true,
+    "acceptable": true,
+    "selected": 3,
+    "candidates": 12,
+    "manual": 97
+  },
+  {
+    "circuit": "llc_resonant",
+    "automatic": 96,
+    "valid": true,
+    "acceptable": true,
+    "selected": 6,
+    "candidates": 12,
+    "manual": 96
+  },
+  {
+    "circuit": "series_rlc",
+    "automatic": 99,
+    "valid": true,
+    "acceptable": true,
+    "selected": 0,
+    "candidates": 12,
+    "manual": 99
+  },
+  {
+    "circuit": "twin_shunt_branches",
+    "automatic": 100,
+    "valid": true,
+    "acceptable": true,
+    "selected": 6,
+    "candidates": 12,
+    "manual": 93
+  },
+  {
+    "circuit": "three_repeated_legs",
+    "automatic": 97,
+    "valid": true,
+    "acceptable": true,
+    "selected": 3,
+    "candidates": 12,
+    "manual": 97
+  },
+  {
+    "circuit": "parallel_rc_block",
+    "automatic": 98,
+    "valid": true,
+    "acceptable": true,
+    "selected": 0,
+    "candidates": 12,
+    "manual": 98
+  },
+  {
+    "circuit": "transformer_between_networks",
+    "automatic": 100,
+    "valid": true,
+    "acceptable": true,
+    "selected": 0,
+    "candidates": 12,
+    "manual": 94
+  },
+  {
+    "circuit": "source_l_r",
+    "automatic": 100,
+    "valid": true,
+    "acceptable": true,
+    "selected": 0,
+    "candidates": 12,
+    "manual": null
+  },
+  {
+    "circuit": "isolated_series_chain",
+    "automatic": 98,
+    "valid": true,
+    "acceptable": true,
+    "selected": 6,
+    "candidates": 12,
+    "manual": null
+  }
+]

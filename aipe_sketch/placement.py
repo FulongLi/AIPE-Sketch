@@ -15,7 +15,7 @@ class Placed:
     __slots__ = ('ref', 'kind', 'x', 'y', 'rot', 'mirror', 'ports', 'bbox',
                  'group', 'slot', 'row', 'spec', 'label', 'sub', 'label_side',
                  'italic', 'interface', 'label_offset', 'marker',
-                 'margin_override', 'label_side_local', 'label_side_flat')
+                 'margin_override', 'label_side_local', 'label_side_flat', 'label_keepout')
 
     def __init__(self, ref, kind, x, y, rot, mirror, ports, bbox, spec):
         self.ref, self.kind = ref, kind
@@ -33,7 +33,21 @@ class Placed:
         self.italic = True
         self.interface = None
         self.marker = None          # (cx, cy, r) once routing is known
+        self.label_keepout = None
         self.margin_override = None  # tightened keep-out on chain-facing sides
+
+    @property
+    def body_bbox(self):
+        return _bbox_after(self.spec.bbox, self.rot, self.mirror, self.x, self.y)
+
+    @property
+    def visual_bbox(self):
+        box = self.clearance_bbox
+        if self.label_keepout:
+            label = self.label_keepout
+            return (min(box[0], label[0]), min(box[1], label[1]),
+                    max(box[2], label[2]), max(box[3], label[3]))
+        return box
 
     @property
     def clearance_bbox(self):
@@ -117,6 +131,38 @@ def _slot_half_width(slot, netlist, specs):
     if not bodies:
         return 0.0
     return max(_drawn_width(spec, item) for _, spec, item in bodies) / 2.0
+
+
+def _visual_half_width(slot, netlist, specs, side, compact=False, text=None):
+    """Provisional visual cell extent, before final collision-aware labelling.
+
+    Facing margins share the relationship gap rather than accumulating on top
+    of it. Horizontal labels reserve their projected width; the global label
+    solver may subsequently choose a different side.
+    """
+    from .labels import text_size
+    from .presentation import text_for
+    from .config import LABEL_PAD_X_MM, CHAIN_FACING_MARGIN_G
+    half = _slot_half_width(slot, netlist, specs)
+    extent = half
+    for ref, spec, item in _bodies(slot, netlist, specs):
+        margin = CHAIN_FACING_MARGIN_G if compact else spec.visual_margin[side]
+        extent = max(extent, half + margin)
+        style = (text or {}).get(ref, text_for(netlist.components[ref]))
+        if style.label and (item.rot % 180 or spec.label_side in ('above', 'below')):
+            width, _ = text_size(style.label, style.sub)
+            extent = max(extent, (width / 2 + LABEL_PAD_X_MM) / G)
+    return extent
+
+
+def _visual_distance(left, right, netlist, specs, gap, text=None):
+    compact = _linked_passives(left, right, netlist, specs)
+    a = _slot_half_width(left, netlist, specs)
+    b = _slot_half_width(right, netlist, specs)
+    va = _visual_half_width(left, netlist, specs, 'right', compact, text)
+    vb = _visual_half_width(right, netlist, specs, 'left', compact, text)
+    # A gap is an edge-to-edge budget, not extra padding outside two cells.
+    return va + vb + max(0, gap - (va - a) - (vb - b))
 
 
 def _linked_passives(left_slot, right_slot, netlist, specs):
@@ -260,7 +306,7 @@ def _natural_pitch(group, netlist, specs, opts):
     return max(2, math.ceil(max(widths) - 1e-6)) + opts['gap_bridge']
 
 
-def place(plan, netlist, specs):
+def place(plan, netlist, specs, text=None):
     """Return {ref: Placed} and the column each group occupies."""
     opts = plan.opts
     cursor = opts['start_col']
@@ -282,8 +328,8 @@ def place(plan, netlist, specs):
             # sits on either side of the boundary
             # rounded up so the boundary lands on the grid and the gap is
             # never tighter than asked for
-            cursor += math.ceil(previous_half + gap + _slot_half_width(
-                group.slots[0], netlist, specs))
+            cursor += math.ceil(_visual_distance(previous_group.slots[-1],
+                                                 group.slots[0], netlist, specs, gap, text))
         pitch = group.pitch
         if pitch is None:
             pitch = _natural_pitch(group, netlist, specs, opts)
@@ -301,11 +347,8 @@ def place(plan, netlist, specs):
             else:
                 gap = pair_gap(group.slots[si - 1], slot,
                                netlist, specs, opts)
-                at = math.ceil(at
-                               + _slot_half_width(group.slots[si - 1],
-                                                  netlist, specs)
-                               + gap
-                               + _slot_half_width(slot, netlist, specs))
+                at = math.ceil(at + _visual_distance(group.slots[si - 1], slot,
+                                                    netlist, specs, gap, text))
                 columns.append(at)
 
         first = cursor
@@ -317,6 +360,8 @@ def place(plan, netlist, specs):
                 spec = specs[comp.kind]
                 x = gxi * G
                 y = (plan.row_y(item.row) + item.dy) * G
+                if item.align_port:
+                    y -= _transform(spec.ports[item.align_port], item.rot, item.mirror)[1]
                 ports = {p: tuple(round(v, 4) for v in (
                     x + _transform(o, item.rot, item.mirror)[0],
                     y + _transform(o, item.rot, item.mirror)[1]))

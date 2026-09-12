@@ -104,9 +104,10 @@ def refine_colours(netlist, rounds=3):
     indistinguishable, which is exactly the condition for demanding
     identical geometry.
     """
-    from .parts import canonical_port
+    from .electrical import canonical_port
 
-    comp = {ref: c.kind for ref, c in netlist.components.items()}
+    comp = {ref: (c.kind, c.role, c.interface, c.attrs.get('direction'))
+            for ref, c in netlist.components.items()}
     net = {name: 'net' for name in netlist.nets}
     nets = netlist.nets
     kinds = {ref: c.kind for ref, c in netlist.components.items()}
@@ -173,7 +174,7 @@ def functional_groups(netlist):
             continue
         role = comp.role
         if role is None:
-            from .parts import ROLES
+            from .electrical import ROLES
             role = ROLES.get(comp.kind, 'generic')
         groups[{
             'source': 'input_dc_link', 'filter': 'filter', 'load': 'load',
@@ -188,7 +189,9 @@ def analyse(netlist):
     """Everything the layout stage needs to know about structure."""
     legs = find_legs(netlist)
     pos, neg = find_rails(netlist)
+    from .planner import graph_analysis
     return {
+        'power_path': graph_analysis(netlist).describe(),
         'rails': {'positive': pos, 'negative': neg},
         'legs': [{'high': l.high, 'low': l.low, 'mid': l.mid} for l in legs],
         'bridges': [[l.mid for l in b] for b in find_bridges(legs)],

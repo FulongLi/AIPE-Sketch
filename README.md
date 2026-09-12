@@ -1,75 +1,95 @@
 # AIPE-Sketch
 
-Publication-quality power-electronics schematics generated from a netlist.
-
-The netlist is the single source of truth. Layout and routing decide only
-*where* things are drawn, never *what is connected to what* — and the finished
-drawing is read back out of its own geometry and checked against the netlist
-before anything is written to disk. A connectivity mismatch is fatal.
+Generate a schematic from an electrical circuit graph, the master symbol library,
+and a general drawing grammar. The schematic is a view of the circuit.
 
 ## Pipeline
 
 ```
-netlist → topology analysis → functional grouping → symmetry detection
-        → placement → routing → scoring → repair
-        → connectivity check → render
+Circuit IR → graph analysis → coordinate-free AutoPlan
+           → drawing grammar → placement → Manhattan routing → global labels
+           → score geometry candidates → connectivity validation → SVG
 ```
 
-Structure is *discovered* from the graph; geometry is *derived* deterministically
-from a coordinate-free plan. The two never mix: `plan.py` contains no x or y,
-and `placement.py` is the only module that invents a coordinate.
+`Schematic.from_netlist()` is the primary API. Converter names are never inputs
+to the planner or scorer. Reference converters and synthetic networks are test
+inputs. The master `assets/master/Inkscape_Symbols_All.svg` remains authoritative.
 
-| stage | module | answers |
-|---|---|---|
-| constants | `config.py` | every visual number, defined once |
-| labelling | `labels.py` | where each label goes, globally |
-| netlist | `netlist.py` | what is connected to what |
-| analysis | `analysis.py` | which legs, rails, groups and repeats exist |
-| plan | `plan.py` | what belongs together, what sits left of what |
-| placement | `placement.py` | exact coordinates, on grid |
-| routing | `router.py` | Manhattan wires, rails, junction dots |
-| scoring | `score.py` | cost and the 0–100 scorecard |
-| drawing rules | `drawing_rules.py` | is it compact, regular and conventional |
-| symbol registry | `parts.py` | geometry, ports, margins and label style |
-| validation | `validate.py` | does the drawing match the netlist |
-| orchestration | `pipeline.py` | run it, repair it, render it |
+| Layer | Modules | Responsibility |
+| --- | --- | --- |
+| Electrical IR | `netlist.py`, `electrical.py` | Components, named ports, nets, interfaces, roles and electrical attributes |
+| Graph planning | `analysis.py`, `planner.py` | Recognise motifs, infer power flow, describe relationships without coordinates |
+| Drawing grammar | `grammar.py`, `plan.py`, `config.py` | Translate relationships into rows, slots, orientations and spacing |
+| Symbol library | `parts.py`, `pins.py`, master SVG | Kind-to-symbol mapping, port geometry, margins and provenance |
+| Geometry | `placement.py`, `router.py`, `labels.py` | Visual cells, coordinates, paths and collision-free labels |
+| Selection and validation | `candidates.py`, `score.py`, `validate.py` | Rank 12 deterministic geometry candidates; reject electrical mismatches |
+| Presentation | `presentation.py`, `pipeline.py` | Optional text styling and rendering |
+
+`AutoPlan` contains no coordinates or spacing. The older `LayoutPlan` is a
+geometric constraint language retained for expert overrides and baseline tests.
+See [the audit and migration notes](docs/architecture.md).
 
 ## Usage
 
+```python
+from aipe_sketch import Netlist, Schematic
+
+circuit = Netlist('Inductive branch')
+circuit.add('V1', 'voltage_source')
+circuit.add('L1', 'inductor', inductance=0.001)
+circuit.add('R1', 'resistor', resistance=10)
+circuit.connect('input', 'V1.p', 'L1.a')
+circuit.connect('output', 'L1.b', 'R1.a')
+circuit.connect('return', 'V1.n', 'R1.b')
+
+schematic = Schematic.from_netlist(circuit)
+schematic.render('out/branch.svg')
+```
+
 ```bash
-python3 build.py                    # all reference and synthetic circuits
-python3 build.py buck dab           # a subset
-python3 build.py --plan buck        # structure and plan, no drawing
+python3 build.py                         # automatic planning for every example
+python3 build.py buck dab                # a subset
+python3 build.py --plan buck             # electrical analysis and relational plan
+python3 build.py --manual buck           # preserved manual baseline
+python3 build.py --checks
 python3 -m unittest discover -s tests
 ```
 
-## Reference topologies
+`topologies.CIRCUITS` and `synthetic.CIRCUITS` contain Netlist-only builders.
+The old `CATALOGUE` / `SYNTHETIC` tuple-returning maps remain compatibility
+aliases to `manual_topologies.py` / `manual_synthetic.py`.
 
-All six are regression tests. Current scores:
+For an explicit override use `Schematic.from_netlist(circuit, plan=manual_plan)`.
+For a single deterministic plan use `candidates=1`. The default searches 12
+small spacing and shunt-position variants. Every variant is rerouted, relabelled,
+scored and validated; valid candidates always outrank invalid ones. Inspect
+`candidate_report` and `selected_candidate` to see the decision.
 
-| circuit | kind | overall |
-|---|---|---|
-| buck | converter | **97** |
-| boost | converter | **99** |
-| half bridge | converter | **99** |
-| full bridge | converter | **99** |
-| three phase inverter | converter | **97** |
-| dab | converter | **97** |
-| llc resonant | converter | **96** |
-| series rlc | synthetic motif | **99** |
-| twin shunt branches | synthetic motif | **93** |
-| three repeated legs | synthetic motif | **97** |
-| parallel rc block | synthetic motif | **98** |
-| transformer between networks | synthetic motif | **94** |
+Electrical validation requires no SVG: `circuit.validate()` checks the declared
+ports. `Netlist.from_dict(circuit.to_dict())` round-trips versioned electrical
+JSON without drawing metadata. Unknown electrical kinds can declare `ports=`;
+a schematic additionally requires a matching symbol registry entry.
 
-Converters are regression cases; the synthetic circuits carry no converter
-semantics and exist to prove the rules work on structure alone. Every drawing
-answers all twenty-two whole-drawing questions cleanly
-(`python3 build.py --checks`).
+Optional notation belongs to the backend:
 
-The crossings in the last two are the topological minimum: three phase outputs
-reaching a shared column must pass two legs, one leg and none; the DAB's two
-bridges each reach across one leg to the transformer.
+```python
+from aipe_sketch import SchematicText
+schematic = Schematic.from_netlist(
+    circuit, text={'V1': SchematicText('V', 'supply')})
+```
+
+Legacy `add(label=..., sub=..., italic=...)` arguments are accepted through a
+weak presentation sidecar, never stored or serialized as electrical attributes.
+New regression builders do not use them.
+
+## Regression coverage
+
+Seven reference converters and seven synthetic circuits exercise the default
+path. Tests also rename every component and net, reverse insertion order,
+verify isolated net partitions, compare manual connectivity, and inject shorts.
+[Regression results](docs/auto-planning-results.md) record automatic/manual
+scores and validity. A passing score is not a proof that every arbitrary graph
+will have an acceptable layout; the renderer rejects invalid candidates.
 
 ## Spacing comes from relationships, not groups
 
@@ -92,8 +112,9 @@ evenly spaced.
 ## Topology motifs
 
 A switching device is not automatically half of a bridge.
-`analysis.classify_motifs` names the local electrical motif, and placement
-follows it:
+`planner.graph_analysis` discovers source/DC-link blocks, series paths, shunts,
+bridge families, parallel blocks, isolation, rectifiers, loads and interfaces.
+`analysis.classify_motifs` remains a legacy local diagnostic. Core rules include:
 
 | motif | how it is recognised | placement |
 |---|---|---|
@@ -500,8 +521,8 @@ transformer reads as two separate inductors.
 
 ```python
 n = Netlist('Half Bridge')
-n.add('Q1', 'nmos', label='S', sub='a+')
-n.add('Q2', 'nmos', label='S', sub='a-')
+n.add('Q1', 'nmos')
+n.add('Q2', 'nmos')
 n.connect('DC_POS', 'V1.p', 'Cdc.a', 'Q1.d')
 n.connect('SW_A',   'Q1.s', 'Q2.d', 'OUT.t')
 n.connect('DC_NEG', 'V1.n', 'Cdc.b', 'Q2.s', 'GND1.t')
@@ -617,62 +638,26 @@ unit.
 
 ## Whole-drawing checklist
 
-`python3 build.py --checks` answers 22 questions per drawing, all clean across
-the catalogue. Checks report what is actually true rather than passing
-vacuously — five topologies have no transformer, and four deliberately have no
-output port at all.
+`python3 build.py --checks` reports the whole-drawing checklist. Structural
+checks and soft aesthetic penalties remain visible; a high overall score does
+not erase a long-wire or spacing warning. Electrical mismatch is always fatal.
 
 ## Known limits
 
-* **The DAB's far-leg transformer run is unavoidably long** — 3.69 CELL
-  against 1.69 for the near leg. A full bridge's outer leg has to reach past
-  the inner one, so the two connections cannot be equal length. Reported by
-  check 10 rather than hidden.
-* **Placement is plan-driven, not automatic.** The placer is deterministic and
-  enforces regularity, but a human still writes the plan — which groups exist
-  and in what order. Auto-generating a plan from `analysis.analyse()` output is
-  the obvious next step and is not done.
-* **No search over layouts.** The cost function ranks a layout; nothing
-  generates alternatives to rank. §15's "prefer the layout that minimises J"
-  is not exercised because there is only ever one candidate.
-* **The repair loop only moves labels.** It tries the four sides and keeps the
-  first collision-free one. It cannot widen a rail, shift a column or reroute
-  a net, so a layout that fails for any other reason is rejected rather than
-  repaired.
-* **Label boxes are estimated, not measured** — no font metrics available.
-  Deliberately pessimistic (0.62 em/glyph, 1.15 em line height, 0.35 mm pad),
-  but it is the weakest input to the collision checker.
-* **The scale threshold of four is a judgement call**, not a derived number.
-* **The extracted library is not wired into rendering yet.** Milestone one was
-  extraction; `parts.Registry` still parses the master directly. Pointing it at
-  `assets/symbol_registry.json` is milestone two.
-* **Port geometry is not extracted.** The registry carries `port_candidates`
-  (free path endpoints) and real `ports` only for the 15 kinds already curated
-  in `pins.py`. Ports for the other 176 are unknown, and are reported as
-  `null` rather than guessed.
-* **Section assignment is a heuristic** — nearest heading above, biased toward
-  the symbol's own column. It is right for the dense left-hand sections; the
-  sparse right-hand ones (`lines` holds 48) are plausibly over-broad.
-* **The full bridge's load sits 0.5 D from each leg**, below the 0.75 D band.
-  The load symbol is 4 G long and the legs are 8 G apart, so only 2 G remains
-  on each side. Widening the legs to 12 G would fix the band at the cost of
-  2 D leg clearance; the runs are symmetric and `local_spread` is 0, so the
-  band penalty is reported rather than designed away. Item 19 forbids
-  stretching the symbol itself.
-* **The DAB's near-transformer run is 1.56 D**, just outside the band, and its
-  far-leg run is 3.56 D — an outer leg has to reach past the inner one.
-* **Gate stubs end bare and unlabelled.** Control ports carry no marker by
-  design, but they also carry no label, so a gate lead is an anonymous short
-  line. Labelling them (`VG1`, `G1`) would make them read as deliberate rather
-  than unfinished.
-* **Phase outputs are treated as exposed power interfaces.** A, B and C are
-  what the inverter drives and nothing in the drawing terminates them, so they
-  carry markers.
-* **Input notation is set by `INPUT_LABEL` in `topologies.py`** — currently
-  `('V', 'in')`, rendering as *V*<sub>in</sub> to match the drawing's other
-  subscripted designators. Change it there for a different house style.
-* **`pins.py` covers 14 part kinds of 196 symbols.** `tools/inspect_symbol.py`
-  prints the measurements needed to add more; `KNOWN_DIRTY` lists symbol
-  wrappers that need cleaning first.
-* **NPC, ANPC, MMC and interleaved structures are not implemented.** The leg
-  abstraction covers two-device legs only.
+* Power-path inference is structural, not an operating-point or energy-flow
+  simulation. Multi-source, cyclic and disconnected graphs may have ambiguous
+  ordering; deterministic tie-breaking is reported in plan diagnostics.
+* The current bridge grammar recognises two-device legs. Arbitrary multilevel
+  stacks and overlapping motifs need additional general grammar rules.
+* Twelve candidates explore small adjacent/bridge spacing and shunt-position
+  changes. They do not exhaust group permutations, routing corridors or every
+  symmetric orientation. Some candidates may be identical for a simple graph.
+* Label bounds use conservative font estimates. Unsupported symbols and layouts
+  with no valid candidate fail explicitly; `force=True` never bypasses electrical
+  connectivity validation.
+* Recognised repeated bridge legs get equal geometry. Graph equivalence alone
+  does not solve all arrangements of repeated multi-component modules.
+* The registry uses curated port geometry from the master sheet. Most symbols
+  in the full sheet still lack an engineering port map and cannot yet render.
+* Simulation, SPICE and other exporters are future backends. This version adds
+  their electrical validation and serialization boundary, not those backends.

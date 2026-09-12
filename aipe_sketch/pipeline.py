@@ -8,60 +8,20 @@ drawing is checked back against it before anything is written out.
 """
 import math
 import os
-import xml.etree.ElementTree as ET
 
-from . import analysis, placement, router, score, symlib, validate
+from . import (analysis, config, labels, placement, router, score, symlib,
+               validate)
+from .config import LABEL_SIZE, NOTE_SIZE
+from .labels import LabelPlacer, text_bbox
 from .parts import build_specs, port_table
 from .pins import COARSE as G
 from .sketch import Sketch
 
-GLYPH_W, LINE_H = 0.62, 1.15
-# Clearance demanded around every label: nothing -- body, other label or
-# wire -- may enter this box.  It is a margin, not merely non-overlap.
-LABEL_PAD_X = 0.5 * G
-LABEL_PAD_Y = 0.35 * G
-LABEL_SIZE = 2.82222
-
-# An 'above' label is anchored by its baseline, so its box still reaches
-# below that by the descent plus the clearance pad.  Any offset smaller than
-# this would put the label's keep-out inside its own body.
-MIN_STACK_OFFSET = 0.25 * LINE_H * LABEL_SIZE + LABEL_PAD_Y + 0.2
-LABEL_SIDES = ('right', 'left', 'above', 'below')
-
-
-def text_bbox(x, y, text, sub, anchor, size, pad_x=None, pad_y=None):
-    n = len(text) + (len(sub) * 0.72 if sub else 0)
-    w = n * size * GLYPH_W
-    h = size * LINE_H
-    x0 = x if anchor == 'start' else (x - w if anchor == 'end' else x - w / 2)
-    px = LABEL_PAD_X if pad_x is None else pad_x
-    py = LABEL_PAD_Y if pad_y is None else pad_y
-    return (x0 - px, y - h * 0.80 - py, x0 + w + px, y + h * 0.25 + py)
-
-
-def ink_bbox(x, y, text, sub, anchor, size):
-    """The glyphs alone, without the clearance margin."""
-    return text_bbox(x, y, text, sub, anchor, size, pad_x=0.0, pad_y=0.0)
-
-
-def label_anchor(part, side, offset=None):
-    """Where a label sits relative to its body.
-
-    The offset comes from the registry per symbol role, so equivalent
-    components place their labels at identical distances.
-    """
-    gap = part.label_offset if offset is None else offset
-    x0, y0, x1, y1 = part.bbox
-    if side in ('above', 'below'):
-        gap = max(gap, MIN_STACK_OFFSET)
-    cy = (y0 + y1) / 2
-    if side == 'right':
-        return x1 + gap, cy + 0.9, 'start'
-    if side == 'left':
-        return x0 - gap, cy + 0.9, 'end'
-    if side == 'above':
-        return (x0 + x1) / 2, y0 - gap, 'middle'
-    return (x0 + x1) / 2, y1 + gap + 2.2, 'middle'
+# kept for callers that import them from here
+LABEL_PAD_X = config.LABEL_PAD_X_MM
+LABEL_PAD_Y = config.LABEL_PAD_Y_MM
+MIN_STACK_OFFSET = config.MIN_STACK_OFFSET_MM
+GLYPH_W, LINE_H = config.GLYPH_W, config.LINE_H
 
 
 class Schematic:
@@ -99,7 +59,7 @@ class Schematic:
         self.labels = []
         self.texts = []
         self._notes = []          # free annotations, kept across label rebuilds
-        self._sides = {ref: p.label_side for ref, p in self.placed.items()}
+        self.homeless_labels = []
 
     # -------------------------------------------------------------- routing
     def default_trunks(self):
@@ -157,32 +117,48 @@ class Schematic:
 
     # -------------------------------------------------------------- labels
     def build_labels(self):
-        """Rebuild component labels, preserving any free annotations."""
+        """Place every label through the one global engine.
+
+        Free annotations are reserved first so component labels route around
+        them, then each label takes the cheapest legal side.
+        """
+        junctions = []
+        for net, net_paths in self.paths.items():
+            terms = [self.placed[r].port(p)
+                     for r, p in self.netlist.nets.get(net, [])
+                     if r in self.placed]
+            junctions += router.junction_points(net_paths, terms)
+
+        placer = LabelPlacer(self.placed, self.paths, junctions)
+        for note in self._notes:
+            placer.reserve(note['key'], note['box'])
+
+        placements, homeless = placer.place_all()
+        self.homeless_labels = homeless
         self.labels, self.texts = [], []
-        for ref, part in self.placed.items():
-            if not part.label:
-                continue
-            x, y, anchor = label_anchor(part, self._sides[ref])
-            box = text_bbox(x, y, part.label, part.sub, anchor, LABEL_SIZE)
-            self.labels.append((ref, box))
-            self.texts.append(dict(x=x, y=y, text=part.label, sub=part.sub,
-                                   anchor=anchor, size=LABEL_SIZE,
-                                   italic=part.italic))
+        for item in placements:
+            part = self.placed[item['ref']]
+            part.label_side = item['side']
+            self.labels.append((item['ref'], item['box']))
+            self.texts.append(dict(x=item['x'], y=item['y'],
+                                   text=item['text'], sub=item['sub'],
+                                   anchor=item['anchor'], size=item['size'],
+                                   italic=item['italic']))
         for note in self._notes:
             self.texts.append(note['text_op'])
             self.labels.append((note['key'], note['box']))
         return self.labels
 
     def note(self, ref, row, text, sub=None, dx=0, dy=0, anchor='middle',
-             size=2.5, italic=True):
+             size=NOTE_SIZE, italic=True):
         """Free text positioned relative to a placed component and a row."""
         gx = self.placed[ref].x / G + dx
         gy = (self.plan.row_y(row) if isinstance(row, str) else row) + dy
         self.annotate(gx, gy, text, sub=sub, anchor=anchor, size=size,
                       italic=italic)
 
-    def annotate(self, gx, gy, text, sub=None, anchor='middle', size=2.5,
-                 italic=False):
+    def annotate(self, gx, gy, text, sub=None, anchor='middle',
+                 size=NOTE_SIZE, italic=False):
         x, y = gx * G, gy * G
         op = dict(x=x, y=y, text=text, sub=sub, anchor=anchor, size=size,
                   italic=italic)
@@ -278,69 +254,18 @@ class Schematic:
                               notes=self._notes,
                               registry=self.specs)
 
-    def repair(self, max_iterations=8):
-        """Fix geometry only: move labels, widen rails, reroute."""
-        log = []
-        card = self.evaluate()
-        for _ in range(max_iterations):
-            if card.acceptable and not card.faults:
-                break
-            before = card.cost
-            if not self._repair_labels(card, log):
-                break
-            self.build_labels()
-            card = self.evaluate()
-            if card.cost >= before:
-                break
-        return card, log
+    def repair(self):
+        """Report what the label engine could not place.
 
-    def _class_of(self, ref):
-        """The equivalence class a component belongs to, itself if unique."""
-        for refs in self.classes.values():
-            if ref in refs:
-                return [r for r in refs if r in self.placed]
-        return [ref]
-
-    def _repair_labels(self, card, log):
-        """Try other sides for a colliding label.
-
-        Equivalent components are moved together: a repeated structure with
-        one label on a different side reads worse than the collision did.
+        Candidate fallback lives in the engine, so by the time a drawing
+        reaches here every label that has a legal home already has one.  What
+        remains is the genuinely impossible case, which is a layout problem
+        rather than a labelling one.
         """
-        offenders = set()
-        for fault in card.faults:
-            if fault.startswith('label '):
-                token = fault.split()[1]
-                if token in self.placed:
-                    offenders.add(token)
-        if not offenders:
-            return False
-        moved = False
-        handled = set()
-        for ref in sorted(offenders):
-            if ref in handled:
-                continue
-            group = self._class_of(ref)
-            handled.update(group)
-            original = {r: self._sides[r] for r in group}
-            for side in LABEL_SIDES:
-                if side == original[ref]:
-                    continue
-                for r in group:
-                    self._sides[r] = side
-                self.build_labels()
-                trial = self.evaluate()
-                if not any(f.startswith(f'label {r} ')
-                           for r in group for f in trial.faults):
-                    log.append(f'moved label{"s" if len(group) > 1 else ""} '
-                               f'{", ".join(group)} to the {side}')
-                    moved = True
-                    break
-            else:
-                for r, side in original.items():
-                    self._sides[r] = side
-                self.build_labels()
-        return moved
+        log = []
+        for ref in getattr(self, 'homeless_labels', ()):
+            log.append(f'no collision-free position for label {ref}')
+        return self.evaluate(), log
 
     # -------------------------------------------------------------- render
     def render(self, path, force=False):

@@ -21,6 +21,8 @@ and `placement.py` is the only module that invents a coordinate.
 
 | stage | module | answers |
 |---|---|---|
+| constants | `config.py` | every visual number, defined once |
+| labelling | `labels.py` | where each label goes, globally |
 | netlist | `netlist.py` | what is connected to what |
 | analysis | `analysis.py` | which legs, rails, groups and repeats exist |
 | plan | `plan.py` | what belongs together, what sits left of what |
@@ -416,6 +418,31 @@ Each file carries its provenance so a stale preview is obvious:
 two runs over the same master are byte-identical — a test asserts it.
 
 ## Label placement
+
+All label placement goes through one engine (`labels.py`). Topology
+definitions describe the circuit; they never choose a label position -- a test
+asserts `topologies.py` contains no `label_side=` or `label_offset=`.
+
+For each component the engine takes the registry's preferred side, generates
+candidates in a fixed order (preferred, opposite, above, below, left, right),
+rejects any that collide with a body, another label, a wire, a junction dot or
+a terminal marker, and keeps the cheapest survivor. Cost weighs departure from
+the preferred side, distance from the body and its port, and remaining
+clearance. **It never returns an overlapping position** -- if every candidate
+fails it returns nothing, and the drawing is rejected.
+
+Preference is per orientation, not per rotation alone:
+
+```python
+'filter': dict(side='left', flat='above', offset=1.3)
+```
+
+Rotating the upright preference cannot express the convention: a capacitor
+prefers `left` standing up, which rotates to `below`, but a horizontal
+capacitor should be labelled `above` like every other flat passive. The
+registry therefore holds both, and the engine picks by orientation.
+
+
 
 Side and offset come from the registry per semantic role, so equivalent
 components place their labels at identical distances — `label_distance`

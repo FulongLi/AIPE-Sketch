@@ -10,9 +10,11 @@ The master SVG stays authoritative.  Nothing here redraws a symbol that the
 sheet already provides; custom geometry appears only where the sheet's own
 symbol is unusable, and then it is assembled from other library symbols.
 """
+from . import config
+from .config import LABEL_STYLE, VISUAL_MARGIN
 from .pins import PARTS as SYMBOL_PARTS, H, COARSE as G
 
-TERMINAL_R = 0.6             # open-circle radius for an external port, mm
+TERMINAL_R = config.TERMINAL_R_MM
 
 # Where a symbol's geometry comes from.  Lookup priority is library first,
 # then a compound assembled from library primitives, and only then custom
@@ -81,34 +83,8 @@ def canonical_port(kind, port):
     return SYMMETRIC_PORTS.get(kind, {}).get(port, port)
 
 
-# ------------------------------------------------------------------ labels
-# Preferred label side and offset per role.  Equivalent components share
-# these, so their labels sit at identical distances.
-LABEL_STYLE = {
-    'power_switch': dict(side='right', offset=1.3),
-    'rectifier':    dict(side='right', offset=1.3),
-    # a horizontal inductor is thin, so its label must clear its own wire
-    'magnetic':     dict(side='above', offset=2.2),
-    'isolation':    dict(side='above', offset=1.6),
-    'filter':       dict(side='left',  offset=1.3),
-    'load':         dict(side='right', offset=1.3),
-    'source':       dict(side='left',  offset=1.6),
-    'reference':    dict(side='below', offset=1.0),
-    'terminal':     dict(side='right', offset=1.4),
-    'generic':      dict(side='right', offset=1.3),
-}
-
-# Keep-out beyond the drawn body, per role, in grid units.  The raw bounding
-# box is not always the right spacing boundary: a transformer is visually
-# dense, a switch needs room on its gate side, a terminal needs almost none.
-VISUAL_MARGIN = {
-    'isolation':    dict(top=1.0, bottom=1.0, left=1.25, right=1.25),
-    'power_switch': dict(top=1.0, bottom=1.0, left=1.25, right=1.0),
-    'source':       dict(top=1.0, bottom=1.0, left=1.25, right=1.0),
-    'terminal':     dict(top=0.25, bottom=0.25, left=0.25, right=0.25),
-    'reference':    dict(top=0.25, bottom=0.5, left=0.5, right=0.5),
-    'generic':      dict(top=1.0, bottom=1.0, left=1.0, right=1.0),
-}
+# Label style and keep-out live in config; they are visual policy, not
+# symbol geometry, and several modules need the same numbers.
 
 # Callers may request a component by its plain engineering name.
 ALIASES = {
@@ -161,6 +137,7 @@ class SymbolSpec:
         self.cleaned = bool(cleaned)
         style = LABEL_STYLE.get(role, LABEL_STYLE['generic'])
         self.label_side = style['side']
+        self.label_side_flat = style.get('flat', style['side'])
         self.label_offset = style['offset']
         self.visual_margin = VISUAL_MARGIN.get(role, VISUAL_MARGIN['generic'])
 

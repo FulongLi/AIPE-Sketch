@@ -15,7 +15,7 @@ class Placed:
     __slots__ = ('ref', 'kind', 'x', 'y', 'rot', 'mirror', 'ports', 'bbox',
                  'group', 'slot', 'row', 'spec', 'label', 'sub', 'label_side',
                  'italic', 'interface', 'label_offset', 'marker',
-                 'margin_override')
+                 'margin_override', 'label_side_local', 'label_side_flat')
 
     def __init__(self, ref, kind, x, y, rot, mirror, ports, bbox, spec):
         self.ref, self.kind = ref, kind
@@ -24,7 +24,11 @@ class Placed:
         self.ports, self.bbox, self.spec = ports, bbox, spec
         self.group = self.slot = self.row = None
         self.label = self.sub = None
-        self.label_side = spec.label_side
+        # the registry's preference, in the symbol's own frame; the label
+        # engine rotates it with the part
+        self.label_side_local = spec.label_side
+        self.label_side_flat = spec.label_side_flat
+        self.label_side = spec.label_side      # filled in once placed
         self.label_offset = spec.label_offset
         self.italic = True
         self.interface = None
@@ -262,11 +266,8 @@ def place(plan, netlist, specs):
                 obj.italic = comp.italic
                 obj.interface = comp.interface
                 if item.label_side is not None:
-                    obj.label_side = item.label_side
-                elif item.rot % 180 and spec.orientation == 'vertical':
-                    # laid on its side: a horizontal L/C/R/D is labelled above
-                    obj.label_side = 'above'
-                    obj.label_offset = max(obj.label_offset, 2.2)
+                    obj.label_side_local = item.label_side
+                    obj.label_side_flat = item.label_side
                 placed[item.ref] = obj
         last = columns[-1]
         extents[group.id] = (first, last)
@@ -281,7 +282,7 @@ def place(plan, netlist, specs):
     return placed, extents
 
 
-CHAIN_MARGIN = 0.5          # grid units on a side that faces a chain neighbour
+from .config import CHAIN_FACING_MARGIN_G as CHAIN_MARGIN
 
 
 def relax_series_margins(plan, placed, netlist, specs):

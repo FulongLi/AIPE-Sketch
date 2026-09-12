@@ -8,14 +8,12 @@ from statistics import mean, pstdev
 
 from . import router
 from .router import TOL
+from .config import (BAND_EPS, BAND_HI, BAND_LO, CELL_MM as CELL,
+                     CHAIN_BAND_HI, CHAIN_BAND_LO, CHAIN_NEUTRAL,
+                     CHAIN_ROLES, LABEL_PAD_X_MM as LABEL_PAD_X,
+                     LABEL_PAD_Y_MM as LABEL_PAD_Y, LONG_RUN_MM as LONG_RUN)
 from .pins import COARSE as G
 
-# label clearance, mirrored from the pipeline so the checklist can report it
-LABEL_PAD_X = 0.5 * G
-LABEL_PAD_Y = 0.35 * G
-
-CELL = 4 * G                 # one component dimension, millimetres
-LONG_RUN = 2 * CELL          # beyond this a wire is a deliberate long haul
 CONTROL_PORTS = ('g',)       # gate leads are not part of the power path
 
 
@@ -41,7 +39,7 @@ def clearance(bodies):
     neighbours sharing a band are compared; distant components are separated
     by whitespace on purpose.
     """
-    from .plan import GAP_ADJACENT, GAP_SERIES_PASSIVE
+    from .config import GAP_ADJACENT, GAP_SERIES_PASSIVE
     from .pins import COARSE as _G
     penalty, tight = 0.0, 0
     for axis in (0, 1):
@@ -324,20 +322,6 @@ def occupancy(bodies, paths, cell=None):
             stack.append((start, h))
     return round(best / max(1, rows * cols), 4)
 
-
-def boundary_status(placed, notes=()):
-    """How VIN and VOUT are represented in this drawing."""
-    ported, annotated = {}, set()
-    for ref, part in placed.items():
-        if part.label in ('VIN', 'VOUT'):
-            ported[part.label] = ref
-    for note in notes:
-        text = note['text_op']['text']
-        if text in ('VIN', 'VOUT'):
-            annotated.add(text)
-    return ported, annotated
-
-
 def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
     """The whole-drawing questions, answered from the measurements.
 
@@ -467,12 +451,7 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
 
 
 # ------------------------------------------------------------------ rule 12
-BAND_LO, BAND_HI = 0.75, 1.5     # acceptable local run length, in CELLs
-# A series passive chain is deliberately packed tighter, so its runs are
-# shorter by design and must not be scored against the ordinary band.
-CHAIN_BAND_LO, CHAIN_BAND_HI = 0.4, 1.0
-from .plan import CHAIN_NEUTRAL, CHAIN_ROLES      # noqa: E402  single source
-BAND_EPS = 1e-4                  # the band edges are inclusive, in cell units
+
 
 
 def length_band(paths, placed=None, netlist=None):
@@ -777,17 +756,6 @@ def symbol_integrity(placed, registry):
                     f'{ref}: drawn {axis} extent {got:.3f} mm but the library '
                     f'symbol is {expected:.3f} mm -- it has been scaled')
     return faults
-
-
-def symbol_sources(placed, registry):
-    """Count how the drawing's symbols were obtained."""
-    tally = {'library': 0, 'cleaned_library': 0, 'compound': 0, 'custom': 0}
-    for kind in {p.kind for p in placed.values()}:
-        spec = registry.get(kind)
-        if spec is not None:
-            tally[spec.source] = tally.get(spec.source, 0) + 1
-    return tally
-
 
 # ------------------------------------------------------------------ power path
 def series_chains(netlist, placed):

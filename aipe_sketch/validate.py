@@ -39,12 +39,6 @@ def _on_segment(pt, seg):
     return (abs(x - x0) < TOL and
             min(y0, y1) - TOL <= y <= max(y0, y1) + TOL)
 
-
-def _endpoint(pt, seg):
-    return any(abs(pt[0] - e[0]) < TOL and abs(pt[1] - e[1]) < TOL
-               for e in seg)
-
-
 def _segments_connect(a, b):
     """True if two wire segments are electrically joined.
 

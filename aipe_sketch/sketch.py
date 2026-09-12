@@ -9,7 +9,7 @@ import math
 import re
 import xml.etree.ElementTree as ET
 
-from . import symlib
+from . import config, symlib
 from .pins import PARTS, COARSE, GRID
 
 NS = symlib.NS
@@ -18,7 +18,7 @@ XLINK = 'http://www.w3.org/1999/xlink'
 WIRE = ('fill:none;stroke:#000000;stroke-width:0.264583;'
         'stroke-linecap:round;stroke-linejoin:miter')
 DOT = 'fill:#000000;stroke:none'
-DOT_R = 0.4                      # matches the junction dots inside the library
+DOT_R = config.JUNCTION_R_MM     # matches the junction dots in the library
 
 
 class Sketch:

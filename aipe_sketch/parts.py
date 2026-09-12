@@ -17,9 +17,11 @@ TERMINAL_R = 0.6             # open-circle radius for an external port, mm
 # Where a symbol's geometry comes from.  Lookup priority is library first,
 # then a compound assembled from library primitives, and only then custom
 # geometry -- so nothing standard is ever redrawn by hand.
-LIBRARY = 'library'          # one <symbol> instantiated from the master sheet
+LIBRARY = 'library'          # one <symbol> instantiated straight from the sheet
+CLEANED_LIBRARY = 'cleaned_library'   # sheet geometry, minus unrelated strays
 COMPOUND_SRC = 'compound'    # assembled from library symbols plus primitives
 CUSTOM = 'custom'            # drawn here because the sheet offers nothing
+FROM_SHEET = (LIBRARY, CLEANED_LIBRARY)
 
 # ------------------------------------------------------------------ compounds
 
@@ -150,7 +152,7 @@ class SymbolSpec:
             self.source = compound.get('source', COMPOUND_SRC)
             self.reason = compound.get('reason', '')
         else:
-            self.source = LIBRARY
+            self.source = CLEANED_LIBRARY if cleaned else LIBRARY
             self.reason = DECOR.get(kind, {}).get('reason', '')
             if cleaned:
                 self.reason = (self.reason + '; ' if self.reason else '') + \
@@ -180,6 +182,11 @@ class SymbolSpec:
         return self.role == 'terminal'
 
     @property
+    def from_sheet(self):
+        """True when the geometry came out of the master library."""
+        return self.source in FROM_SHEET
+
+    @property
     def decorated(self):
         """True when marks are added over a library symbol."""
         return bool(DECOR.get(self.kind))
@@ -187,10 +194,8 @@ class SymbolSpec:
     @property
     def provenance(self):
         """One line naming where this symbol's geometry comes from."""
-        if self.source == LIBRARY:
-            text = f'{LIBRARY} {self.symbol_id}'
-            if self.cleaned:
-                text += ' (cleaned)'
+        if self.source in FROM_SHEET:
+            text = f'{self.source} {self.symbol_id}'
             if self.decorated:
                 text += ' + marks'
             return text

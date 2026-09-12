@@ -38,6 +38,8 @@ WEIGHTS = {
     'external_marker': 40000,
     'transformer_spread': 20000,
     'redundant_annotation': 2000,
+    'centreline_deviation': 3000,
+    'near_component_bend': 1500,
     'symbol_distortion': 60000,
 }
 
@@ -77,7 +79,7 @@ class Scorecard:
                    'alignment': 2, 'routing': 1, 'crossings': 1,
                    'collision': 3, 'topology_readability': 1,
                    'visual_rhythm': 2, 'clearance': 2, 'conventions': 2,
-                   'labelling': 2}
+                   'labelling': 2, 'power_path': 2}
         total = sum(weights.values())
         return round(sum(self.sub[k] * w for k, w in weights.items()) / total)
 
@@ -101,7 +103,7 @@ class Scorecard:
         for key in ('connectivity', 'symmetry', 'spacing_uniformity',
                     'alignment', 'routing', 'crossings', 'collision',
                     'topology_readability', 'visual_rhythm', 'clearance',
-                    'labelling', 'conventions'):
+                    'labelling', 'power_path', 'conventions'):
             lines.append(f'  {key:<22} {self.sub[key]:>3}')
         lines.append(f'  {"overall":<22} {self.overall:>3}')
         if self.faults:
@@ -262,7 +264,7 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     structure = structure or {}
     raw['clearance'], tight_bodies = drawing_rules.clearance(solid)
     raw['rhythm'], raw['scales'] = drawing_rules.rhythm(paths)
-    raw['local_spread'], uneven = drawing_rules.local_consistency(placed, paths)
+    raw['local_spread'], uneven = drawing_rules.local_consistency(placed, paths, netlist)
     raw['clearance_tight'] = tight_bodies
 
     rails = [structure.get('rails', {}).get('positive'),
@@ -306,8 +308,7 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     # how much of the drawing comes from the master sheet, and whether any
     # symbol was distorted on the way in
     seen = {p.spec.kind: p.spec for p in parts}
-    raw['library_symbols'] = sum(1 for s in seen.values()
-                                 if s.source == 'library')
+    raw['library_symbols'] = sum(1 for s in seen.values() if s.from_sheet)
     raw['assembled_symbols'] = sum(1 for s in seen.values()
                                    if s.source == 'compound')
     raw['custom_symbols'] = sum(1 for s in seen.values()
@@ -323,6 +324,13 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     tx_faults, raw['tx_ratio'] = drawing_rules.transformer_spread(placed)
     raw['transformer_spread'] = len(tx_faults)
     faults += tx_faults
+
+    raw['centreline_deviation'], line_faults = \
+        drawing_rules.centreline_deviation(netlist, placed)
+    faults += line_faults
+    raw['near_component_bend'], bend_faults = \
+        drawing_rules.near_component_bend_penalty(netlist, placed, paths)
+    faults += bend_faults[:4]
 
     raw['fill'], raw['aspect'] = drawing_rules.compactness(solid, paths)
     raw['largest_void'] = drawing_rules.occupancy(solid, paths)
@@ -351,6 +359,8 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
         'routing': _clamp(100 - 100 * raw['bend'] / (3 * nnets)
                           - 60 * raw['wire_uniformity'] / max(1, nnets)
                           - 25 * raw['routing_shape']),
+        'power_path': _clamp(100 - 40 * raw['centreline_deviation']
+                             - 30 * raw['near_component_bend']),
         'crossings': _clamp(100 - 100 * raw['crossing'] / (2 * nnets)),
         'topology_readability': _clamp(
             100 - raw['spacing_target'] / (8 * nparts)

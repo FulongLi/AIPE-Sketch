@@ -10,10 +10,33 @@ geometry by construction rather than by optimisation.
 # of visual scale: one component dimension.  Every spacing below is a multiple
 # of it, which is what gives the drawing a repeating rhythm.
 CELL = 4                 # one component dimension, in grid units
-CLEARANCE = CELL         # preferred gap between neighbouring bodies
-PITCH = 2 * CELL         # centre-to-centre for adjacent components
-GROUP_PITCH = 10         # centre-to-centre across a functional boundary
-ANCHOR_PITCH = 8         # around a visually dense anchor such as a transformer
+
+# Spacing is a gap between bodies -- edge to edge, in grid units -- and it
+# depends on how the two neighbours are related, not on one global scale.
+# A series passive chain should read as one run, so it is packed tightest;
+# bridge legs are pushed apart so repeated structure is legible; functional
+# blocks get the most air.
+# Whole grid steps, so every component stays on the layout grid.
+GAP_SERIES_PASSIVE = 2       # C -> L -> C along one series path
+GAP_ADJACENT = 4             # ordinary neighbouring components
+# 6 rather than 5 so a load slung between two legs lands exactly
+# half way, on the grid, keeping the bridge symmetric.
+GAP_BRIDGE_LEG = 6           # between the legs of one bridge
+GAP_GROUP = 6                # across a functional boundary
+GAP_ANCHOR = 6               # around a visually dense anchor
+
+# Roles that may form a compact series chain.  A rectifier counts: a
+# transformer should not sit far from the rectifier that follows it.
+CHAIN_ROLES = frozenset({'filter', 'load', 'magnetic', 'isolation',
+                         'rectifier'})
+# Neutral riders -- a ground glyph or an interface marker attached to a node
+# is not part of the power path and must not disqualify a chain.
+CHAIN_NEUTRAL = frozenset({'reference', 'terminal'})
+
+CLEARANCE = GAP_ADJACENT     # default when a group's character is unknown
+PITCH = CELL + GAP_ADJACENT
+GROUP_PITCH = GAP_GROUP
+ANCHOR_PITCH = GAP_ANCHOR
 
 # Named rows.  A leg spans dc_pos..dc_neg, the two devices are one component
 # dimension apart, and the switching node sits exactly between them.
@@ -40,7 +63,10 @@ ROWS_TALL = {
 }
 
 DEFAULTS = dict(
-    clearance=CLEARANCE,  # gap added around the widest body in a group
+    clearance=CLEARANCE,  # fallback gap when a group's character is unknown
+    gap_series=GAP_SERIES_PASSIVE,
+    gap_adjacent=GAP_ADJACENT,
+    gap_bridge=GAP_BRIDGE_LEG,
     leg_pitch=PITCH,      # fallback between legs of one bridge
     slot_pitch=PITCH,     # fallback between slots of a group
     group_gap=GROUP_PITCH,

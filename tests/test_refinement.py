@@ -317,7 +317,7 @@ class TestTransformer(unittest.TestCase):
     def test_it_comes_from_the_library_not_a_hand_built_compound(self):
         registry = Registry(symlib.load(build.SRC)[1])
         spec = registry['transformer']
-        self.assertEqual(spec.source, 'library')
+        self.assertEqual(spec.source, 'cleaned_library')
         self.assertEqual(spec.symbol_id, 'g7138')
         self.assertTrue(spec.cleaned,
                         'the wrapper also encloses neighbouring geometry')

@@ -74,7 +74,9 @@ class TestSourceSymbols(unittest.TestCase):
 class TestLocalScale(unittest.TestCase):
     """Rules 3, 4, 5, 22, 23, 27: one consistent local visual scale."""
 
-    def test_neighbouring_bodies_sit_about_one_cell_apart(self):
+    def test_neighbouring_bodies_respect_their_spacing_role(self):
+        """Spacing depends on the relationship, not one global scale."""
+        from aipe_sketch.plan import CHAIN_ROLES
         for name in NAMES:
             sch, _, _, _ = built(name)
             parts = sorted((p for p in sch.placed.values()
@@ -87,10 +89,31 @@ class TestLocalScale(unittest.TestCase):
                 gap = (b.bbox[0] - a.bbox[2]) / CELL
                 if gap <= 0 or gap > 3:
                     continue                       # touching or a long haul
-                self.assertGreaterEqual(gap, 0.75,
+                chain = (a.spec.role in CHAIN_ROLES
+                         and b.spec.role in CHAIN_ROLES)
+                floor = 0.4 if chain else 0.75
+                self.assertGreaterEqual(gap, floor,
                                         f'{name}: {a.ref}->{b.ref} crowded')
-                self.assertLessEqual(gap, 1.6,
+                self.assertLessEqual(gap, 1.7,
                                      f'{name}: {a.ref}->{b.ref} too far')
+
+    def test_series_passive_chains_are_tighter_than_group_boundaries(self):
+        """The whole point of the hierarchy: a chain reads as one run."""
+        from aipe_sketch.plan import (GAP_ADJACENT, GAP_BRIDGE_LEG,
+                                      GAP_GROUP, GAP_SERIES_PASSIVE)
+        self.assertLess(GAP_SERIES_PASSIVE, GAP_ADJACENT)
+        self.assertLess(GAP_ADJACENT, GAP_BRIDGE_LEG)
+        self.assertLessEqual(GAP_BRIDGE_LEG, GAP_GROUP)
+
+    def test_a_measured_chain_is_compact(self):
+        from aipe_sketch.pins import COARSE as G
+        sch, _, _, _ = built('buck')
+        pairs = (('L1', 'C2'), ('C2', 'R1'))
+        for left, right in pairs:
+            gap = (sch.placed[right].bbox[0] -
+                   sch.placed[left].bbox[2]) / G
+            self.assertLessEqual(gap, 3.0,
+                                 f'{left}->{right} is {gap:.1f}G, not compact')
 
     def test_a_component_has_no_wildly_uneven_local_wires(self):
         for name in NAMES:

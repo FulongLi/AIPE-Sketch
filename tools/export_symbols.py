@@ -114,16 +114,17 @@ def report(registry, stream=sys.stdout):
     """Provenance audit: which kinds come from the library, and which do not."""
     rows = registry.audit()
     width = max(len(r['kind']) for r in rows)
-    print(f'{"kind".ljust(width)}  source    symbol      ports', file=stream)
+    print(f'{"kind".ljust(width)}  source           symbol      ports',
+          file=stream)
     for r in rows:
-        print(f'{r["kind"].ljust(width)}  {r["source"]:<8}  '
+        print(f'{r["kind"].ljust(width)}  {r["source"]:<15}  '
               f'{r["symbol_id"] or "-":<10}  {",".join(r["ports"])}',
               file=stream)
-    redrawn = [r for r in rows if r['source'] == 'custom']
-    print(f'\n{sum(1 for r in rows if r["source"] == "library")} from the '
-          f'library, '
-          f'{sum(1 for r in rows if r["source"] == "compound")} assembled, '
-          f'{len(redrawn)} custom', file=stream)
+    tally = {}
+    for r in rows:
+        tally[r['source']] = tally.get(r['source'], 0) + 1
+    print('\n' + ', '.join(f'{v} {k}' for k, v in sorted(tally.items())),
+          file=stream)
     for r in rows:
         if r['reason']:
             print(f'  {r["kind"]}: {r["reason"]}', file=stream)

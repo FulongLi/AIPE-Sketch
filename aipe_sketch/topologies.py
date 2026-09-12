@@ -182,7 +182,7 @@ def full_bridge():
         Group('bridge', 'bridge', [
             _leg_slot('Q1', 'Q2', 'G1', 'G2',
                       (Item('GND1', 'dc_neg'),
-                       Item('R1', 'mid', dx=4, rot=-90))),
+                       Item('R1', 'mid', dx=5, rot=-90))),
             _leg_slot('Q3', 'Q4', 'G3', 'G4')]),
     ])
     return n, plan, dict()
@@ -270,7 +270,66 @@ def dab():
                                  'DCN2': ('h', 'dc_neg')})
 
 
+# ------------------------------------------------------------------ resonant
+def llc_resonant():
+    """Half bridge driving a series resonant tank into a transformer.
+
+    The primary power path -- switching node, Cr, Lr, transformer primary --
+    is the case the centreline rules exist for.  The transformer is placed
+    so that its primary top terminal lands exactly on the switching-node
+    row, which is what lets the whole chain sit on one horizontal line.
+    """
+    n = Netlist('LLC Resonant Converter')
+    n.add('V1', 'vsource', label=INPUT_LABEL[0], sub=INPUT_LABEL[1])
+    n.add('C1', 'cap', label='C', sub='1')
+    _gnd(n, 'GND1')
+    _switches(n, 2)
+    n.add('Cr', 'cap', label='C', sub='r')
+    n.add('Lr', 'ind', label='L', sub='r')
+    n.add('T1', 'transformer', label='T', sub='1')
+    n.add('D1', 'diode', label='D', sub='1')
+    n.add('C2', 'cap', label='C', sub='2')
+    n.add('R1', 'res', label='R', sub='1')
+    _gnd(n, 'GND2')
+
+    n.connect('DC_POS', 'V1.p', 'C1.a', 'Q1.d')
+    n.connect('DC_NEG', 'V1.n', 'C1.b', 'Q2.s', 'GND1.t', 'T1.p2')
+    n.connect('SW', 'Q1.s', 'Q2.d', 'Cr.a')
+    n.connect('RES', 'Cr.b', 'Lr.a')
+    n.connect('PRI', 'Lr.b', 'T1.p1')
+    n.connect('SEC', 'T1.s1', 'D1.a')
+    n.connect('VOUT_N', 'D1.k', 'C2.a', 'R1.a')
+    n.connect('SEC_RTN', 'T1.s2', 'C2.b', 'R1.b', 'GND2.t')
+    n.connect('G_1', 'Q1.g', 'G1.t')
+    n.connect('G_2', 'Q2.g', 'G2.t')
+
+    plan = LayoutPlan([
+        Group('input_dc_link', 'source', [
+            Slot(Item('V1', ('dc_pos', 'dc_neg'))),
+            Slot(Item('C1', ('dc_pos', 'dc_neg')))]),
+        Group('bridge', 'bridge', [
+            _leg_slot('Q1', 'Q2', 'G1', 'G2', (Item('GND1', 'dc_neg'),))]),
+        # the tank rides the switching-node row, laid flat
+        Group('resonant_tank', 'filter', [
+            Slot(Item('Cr', 'mid', rot=-90)),
+            Slot(Item('Lr', 'mid', rot=-90))]),
+        # centred a half symbol below 'mid', so its primary top terminal
+        # lands on the switching-node row and the tank stays collinear
+        Group('isolation', 'isolation', [
+            Slot(Item('T1', ('mid', 'low')))]),
+        Group('rectifier', 'filter', [
+            Slot(Item('D1', 'mid', rot=90))]),
+        Group('output', 'filter', [
+            Slot(Item('C2', ('mid', 'dc_neg'))),
+            Slot(Item('R1', ('mid', 'dc_neg')),
+                 Item('GND2', 'dc_neg'))]),
+    ])
+    return n, plan, dict(trunks={'VOUT_N': ('h', 'mid'),
+                                 'SEC_RTN': ('h', 'dc_neg')})
+
+
 CATALOGUE = {
+    'llc_resonant': llc_resonant,
     'buck': buck,
     'boost': boost,
     'half_bridge': half_bridge,

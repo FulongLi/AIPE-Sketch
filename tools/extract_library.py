@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aipe_sketch import library, symlib
-from aipe_sketch.paths import GENERATED, MASTER, MASTER_NAME, OUT, REGISTRY_JSON
+from aipe_sketch.paths import EXTRACTED, MASTER, MASTER_NAME, OUT, REGISTRY_JSON
 from aipe_sketch.pins import PARTS as CURATED
 
 NS = symlib.NS
@@ -80,7 +80,7 @@ def inventory():
 
 
 # ------------------------------------------------------------------ export
-def write_symbol(entry, defs, version, out_root=GENERATED):
+def write_symbol(entry, defs, version, out_root=EXTRACTED):
     """One standalone preview, normalised to a local origin."""
     x0, y0, x1, y1 = entry['clean_bbox']
     w, h = (x1 - x0) + 2 * PAD, (y1 - y0) + 2 * PAD
@@ -127,9 +127,9 @@ def write_registry(entries, version, path=REGISTRY_JSON):
         index[e['semantic_name']] = {
             'section': e['source_section'],
             'file': os.path.relpath(
-                os.path.join(GENERATED, e['source_section'],
+                os.path.join(EXTRACTED, e['source_section'],
                              f'{e["semantic_name"]}.svg'),
-                os.path.dirname(os.path.dirname(GENERATED))),
+                os.path.dirname(os.path.dirname(EXTRACTED))),
             'symbol_id': e['original_symbol_id'],
             'title': e['title'],
             'source_file': e['source_file'],
@@ -261,7 +261,7 @@ def main(argv=None):
     for e in chosen:
         write_symbol(e, defs, version)
     print(f'{len(chosen)} symbols written to '
-          f'{os.path.relpath(GENERATED, os.getcwd())}')
+          f'{os.path.relpath(EXTRACTED, os.getcwd())}')
     print(f'registry: {os.path.relpath(write_registry(entries, version))}')
 
     if args.catalog:

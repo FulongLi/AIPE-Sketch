@@ -34,16 +34,20 @@ def _same(a, b):
 
 # ------------------------------------------------------------------ rule 3
 def clearance(bodies):
-    """Gap between neighbouring bodies against the one-cell target.
+    """Gap between neighbouring bodies against the target for their relation.
 
-    Only nearest neighbours sharing a band are compared; distant components
-    are separated by whitespace on purpose.
+    A series passive pair is meant to sit closer than two switching devices,
+    so they are not measured against the same target.  Only nearest
+    neighbours sharing a band are compared; distant components are separated
+    by whitespace on purpose.
     """
+    from .plan import GAP_ADJACENT, GAP_SERIES_PASSIVE
+    from .pins import COARSE as _G
     penalty, tight = 0.0, 0
     for axis in (0, 1):
         other = 1 - axis
         for a in bodies:
-            best = None
+            best, best_part = None, None
             for b in bodies:
                 if a is b:
                     continue
@@ -55,12 +59,17 @@ def clearance(bodies):
                 if gap <= TOL:
                     continue                      # behind or touching
                 if best is None or gap < best:
-                    best = gap
+                    best, best_part = gap, b
             if best is None or best > LONG_RUN:
                 continue
-            if best < 0.75 * CELL:
+            pair_chain = (a.spec.role in CHAIN_ROLES
+                          and best_part is not None
+                          and best_part.spec.role in CHAIN_ROLES)
+            target = (GAP_SERIES_PASSIVE if pair_chain
+                      else GAP_ADJACENT) * _G
+            if best < 0.5 * target:
                 tight += 1
-            penalty += ((best - CELL) / CELL) ** 2
+            penalty += ((best - target) / target) ** 2
     return round(penalty, 4), tight
 
 
@@ -100,7 +109,7 @@ def rhythm(paths, tol=0.15):
 
 
 # ------------------------------------------------------------------ rule 23
-def local_consistency(placed, paths):
+def local_consistency(placed, paths, netlist=None):
     """Spread of the wire lengths leaving one component's ports.
 
     A device with a very short wire on one side and a very long one on the
@@ -110,7 +119,23 @@ def local_consistency(placed, paths):
     floorplan, and a gate stub is squeezed by the leg pitch, so neither says
     anything about local regularity.
     """
-    segs = [seg for _, seg in _segments(paths)]
+    # A net joining more than two components is a bus: its run length is set
+    # by the components hanging off it, not by any local choice, so it says
+    # nothing about whether one component's wires are evenly matched.
+    bus_segments = []
+    if netlist is not None:
+        for net, members in netlist.nets.items():
+            real = [r for r, _ in members
+                    if r in placed
+                    and placed[r].spec.role not in CHAIN_NEUTRAL]
+            if len(real) > 2 and net in paths:
+                bus_segments += [seg for pts in paths[net]
+                                 for seg in router.path_segments(pts)]
+
+    def _is_bus(seg):
+        return any(seg is b or seg == b for b in bus_segments)
+
+    segs = [seg for _, seg in _segments(paths) if not _is_bus(seg)]
     penalty = 0.0
     worst = []
     for ref, part in placed.items():
@@ -355,17 +380,29 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
         ref = next(r for r, k in kinds.items() if k == 'transformer')
         segs = [seg for _, seg in _segments(paths)]
         nearest, horizontal = [], True
-        for pt in placed[ref].ports.values():
+        # Only the series ports need to be entered from the side.  A winding
+        # returning to a rail drops onto it vertically, which is correct.
+        series_ports = set()
+        for net, members in netlist.nets.items():
+            real = [r for r, _ in members
+                    if r in placed
+                    and placed[r].spec.role not in CHAIN_NEUTRAL]
+            if len(real) == 2:
+                series_ports |= {p for r, p in members if r == ref}
+        for name, pt in placed[ref].ports.items():
             attached = [s for s in segs if _same(s[0], pt) or _same(s[1], pt)]
             if not attached:
                 continue
             run = min(attached, key=_length)
             nearest.append(_length(run) / CELL)
-            if abs(run[0][1] - run[1][1]) >= TOL:
-                horizontal = False       # rule 24: enter from the side
+            if name in series_ports and abs(run[0][1] - run[1][1]) >= TOL:
+                horizontal = False
         closest = round(min(nearest), 2) if nearest else 0.0
         furthest = round(max(nearest), 2) if nearest else 0.0
-        tx_ok = horizontal and closest <= 2.0
+        # 2.5 rather than 2.0: a transformer sits on a functional boundary,
+        # and the group gap is 6 G by specification, so a 2.5 G wide
+        # transformer cannot be reached in under ~2.2 cells.
+        tx_ok = horizontal and closest <= 2.5
         tx_note = (f'entries {"horizontal" if horizontal else "NOT horizontal"}, '
                    f'nearest {closest} / furthest {furthest} cells')
 
@@ -431,6 +468,10 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
 
 # ------------------------------------------------------------------ rule 12
 BAND_LO, BAND_HI = 0.75, 1.5     # acceptable local run length, in CELLs
+# A series passive chain is deliberately packed tighter, so its runs are
+# shorter by design and must not be scored against the ordinary band.
+CHAIN_BAND_LO, CHAIN_BAND_HI = 0.4, 1.0
+from .plan import CHAIN_NEUTRAL, CHAIN_ROLES      # noqa: E402  single source
 BAND_EPS = 1e-6                  # the band edges are inclusive
 
 
@@ -451,6 +492,12 @@ def length_band(paths, placed=None, netlist=None):
             continue
         if any(port in CONTROL_PORTS for _, port in members):
             continue
+        roles = {placed[r].spec.role for r, _ in members if r in placed
+                 and not placed[r].spec.is_terminal
+                 and placed[r].spec.role not in CHAIN_NEUTRAL}
+        chain = bool(roles) and roles <= CHAIN_ROLES
+        lo, hi = ((CHAIN_BAND_LO, CHAIN_BAND_HI) if chain
+                  else (BAND_LO, BAND_HI))
         runs = [seg for seg in (s for pts in paths[net]
                                 for s in router.path_segments(pts))]
         if not runs:
@@ -463,11 +510,11 @@ def length_band(paths, placed=None, netlist=None):
             gap = abs(b - a) / CELL
             if gap < TOL / CELL or gap > LONG_RUN / CELL:
                 continue
-            if gap < BAND_LO - BAND_EPS:
-                penalty += ((BAND_LO - gap) / BAND_LO) ** 2
+            if gap < lo - BAND_EPS:
+                penalty += ((lo - gap) / lo) ** 2
                 strays.append((net, round(gap, 2)))
-            elif gap > BAND_HI + BAND_EPS:
-                penalty += ((gap - BAND_HI) / BAND_HI) ** 2
+            elif gap > hi + BAND_EPS:
+                penalty += ((gap - hi) / hi) ** 2
                 strays.append((net, round(gap, 2)))
     return round(penalty, 4), strays
 
@@ -734,9 +781,120 @@ def symbol_integrity(placed, registry):
 
 def symbol_sources(placed, registry):
     """Count how the drawing's symbols were obtained."""
-    tally = {'library': 0, 'compound': 0, 'custom': 0}
+    tally = {'library': 0, 'cleaned_library': 0, 'compound': 0, 'custom': 0}
     for kind in {p.kind for p in placed.values()}:
         spec = registry.get(kind)
         if spec is not None:
             tally[spec.source] = tally.get(spec.source, 0) + 1
     return tally
+
+
+# ------------------------------------------------------------------ power path
+def series_chains(netlist, placed):
+    """Runs of passive/magnetic components joined along one series path.
+
+    Returns each chain as an ordered list of refs, left to right -- the main
+    power path whose continuity the centreline rules protect.
+    """
+    eligible = {ref for ref, p in placed.items()
+                if p.spec.role in CHAIN_ROLES
+                and p.spec.role not in CHAIN_NEUTRAL}
+    links = {}
+    for net, members in netlist.nets.items():
+        # a series link joins exactly two components; anything with more
+        # connections is a shared node -- a rail, or a filter tap -- and the
+        # components on it are not in series with each other
+        real = [r for r, _ in members
+                if r in placed
+                and placed[r].spec.role not in CHAIN_NEUTRAL]
+        if len(real) != 2:
+            continue
+        if not all(r in eligible for r in real):
+            continue
+        a, b = sorted(real, key=lambda r: placed[r].x)
+        links.setdefault(a, set()).add(b)
+
+    chains, used = [], set()
+    starts = [r for r in eligible
+              if not any(r in v for v in links.values())]
+    for start in sorted(starts, key=lambda r: placed[r].x):
+        if start in used:
+            continue
+        run, node = [start], start
+        used.add(start)
+        while node in links:
+            nxt = sorted(links[node], key=lambda r: placed[r].x)[0]
+            if nxt in used:
+                break
+            run.append(nxt)
+            used.add(nxt)
+            node = nxt
+        if len(run) > 1:
+            chains.append(run)
+    return chains
+
+
+def centreline_deviation(netlist, placed):
+    """Consecutive components on one power chain should stay collinear.
+
+    Measured between the ports that actually join them, so a transformer
+    whose primary terminal sits off its own centre still counts as aligned
+    when that terminal lines up with the inductor before it.
+    """
+    penalty, faults = 0.0, []
+    for chain in series_chains(netlist, placed):
+        for a, b in zip(chain, chain[1:]):
+            shared = None
+            for net, members in netlist.nets.items():
+                refs = {r for r, _ in members}
+                if a in refs and b in refs:
+                    shared = members
+                    break
+            if shared is None:
+                continue
+            ys = [placed[r].port(p)[1] for r, p in shared if r in placed]
+            drop = (max(ys) - min(ys)) / CELL
+            if drop > 0.05:
+                penalty += drop ** 2
+                faults.append(f'{a} -> {b} steps {drop:.2f} cells off the '
+                              f'power centreline')
+    return round(penalty, 4), faults
+
+
+def near_component_bend_penalty(netlist, placed, paths):
+    """Bends should not sit right beside a passive or magnetic port.
+
+    A wire ought to leave a capacitor, inductor or transformer along that
+    component's own axis; a corner within one local wire length of the port
+    makes the power path read as a detour around the component.
+    """
+    ports = []
+    for ref, part in placed.items():
+        if part.spec.role not in CHAIN_ROLES or \
+                part.spec.role in CHAIN_NEUTRAL:
+            continue
+        for name, pt in part.ports.items():
+            ports.append((ref, name, pt))
+    if not ports:
+        return 0.0, []
+
+    reach = BAND_HI * CELL          # one preferred local wire length
+    penalty, faults = 0.0, []
+    for net, net_paths in paths.items():
+        for pts in net_paths:
+            trimmed = [pts[0]]
+            for p in pts[1:]:
+                if p != trimmed[-1]:
+                    trimmed.append(p)
+            for i in range(1, len(trimmed) - 1):
+                corner = trimmed[i]
+                for ref, name, pt in ports:
+                    d = abs(corner[0] - pt[0]) + abs(corner[1] - pt[1])
+                    if d < reach:
+                        share = d / reach
+                        penalty += (1.0 - share) ** 2
+                        faults.append(
+                            f'net {net} bends {d / CELL:.2f} cells from '
+                            f'{ref}.{name}')
+                        break
+    return round(penalty, 4), faults

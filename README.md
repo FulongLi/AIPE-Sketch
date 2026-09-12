@@ -53,6 +53,7 @@ All six are regression tests. Current scores:
 | full bridge | 100 | 100 | 95 | 97 | 100 | **97** |
 | three-phase 2-level | 100 | 100 | 94 | 97 | 100 | **98** |
 | DAB | 100 | 100 | 98 | 98 | 100 | **99** |
+| LLC resonant | 100 | 100 | 94 | 88 | 100 | **97** |
 
 Every drawing also answers the fifteen whole-drawing questions cleanly
 (`python3 build.py --checks`).
@@ -60,6 +61,44 @@ Every drawing also answers the fifteen whole-drawing questions cleanly
 The crossings in the last two are the topological minimum: three phase outputs
 reaching a shared column must pass two legs, one leg and none; the DAB's two
 bridges each reach across one leg to the transformer.
+
+## Main power path
+
+A resonant converter's primary side -- switching node, Cr, Lr, transformer --
+should read as one continuous horizontal line. Two metrics enforce that:
+
+* **`centreline_deviation`** finds runs of passives joined in series and
+  penalises any vertical step between consecutive members, measured at the
+  ports that actually join them.
+* **`near_component_bend_penalty`** penalises a corner within one local wire
+  length of a passive or magnetic port -- a wire should leave a capacitor,
+  inductor or transformer along that component's own axis.
+
+A *series link* is a net joining exactly two components. A rail or a filter
+tap has more, and the parts on it are not in series -- without that
+distinction the DC- rail looked like a Cr-to-T1 chain.
+
+The LLC places its transformer half a symbol below the switching-node row, so
+`T1.p1` lands exactly on that row and the whole tank stays collinear:
+
+```
+Q1/Q2 midpoint ──── Cr ──── Lr ──── T1 ┃ ──── D1 ──── C2 ──── R1
+```
+
+### Spacing by relationship
+
+| relation | target | LLC measured |
+|---|---|---|
+| series passive chain | 2 G | Cr→Lr **2.0**, D1→C2 **2.0** |
+| chain across a boundary | 2 G | Lr→T1 **2.8**, T1→D1 **2.8** |
+| functional group | 6 G | Q1→Cr **6.5** |
+
+Chain detection crosses functional boundaries -- a tank running into a
+transformer is one chain even though they are different blocks -- and
+rectifiers count, so a transformer never sits far from the rectifier after
+it. A ground glyph sharing a slot is neutral and does not break a chain.
+
+Chain members carry a reduced keep-out (0.5 G) on the facing sides only.
 
 ## Visual scale
 

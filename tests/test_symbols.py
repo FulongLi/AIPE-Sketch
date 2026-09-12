@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import build
 from aipe_sketch import drawing_rules as dr
 from aipe_sketch import symlib
-from aipe_sketch.parts import CUSTOM, LIBRARY, Registry
+from aipe_sketch.parts import (CLEANED_LIBRARY, CUSTOM, LIBRARY,
+                               Registry)
 from aipe_sketch.topologies import CATALOGUE
 
 NAMES = sorted(CATALOGUE)
@@ -73,7 +74,7 @@ class TestLookupPriority(unittest.TestCase):
         """It was a hand-assembled compound until the sheet's own symbol
         was recovered by handling rotate/scale transforms."""
         spec = registry()['transformer']
-        self.assertEqual(spec.source, LIBRARY)
+        self.assertEqual(spec.source, CLEANED_LIBRARY)
         self.assertEqual(spec.symbol_id, 'g7138')
 
     def test_custom_geometry_is_a_last_resort_and_justified(self):
@@ -200,14 +201,26 @@ class TestExportedPreviews(unittest.TestCase):
             self.assertNotIn('generated_symbols', source, module)
 
     def test_a_drawing_builds_with_the_previews_deleted(self):
-        import shutil
-        backup = self.dir + '.bak'
-        shutil.move(self.dir, backup)
-        try:
-            _, card, _, _ = build.build('buck', out_dir=OUT)
-            self.assertEqual(card.sub['connectivity'], 100)
-        finally:
-            shutil.move(backup, self.dir)
+        """Rendering must not need the previews at all.
+
+        Exported into a throwaway directory rather than moving the shared one
+        aside: other tests write there, and racing them left empty stray
+        directories behind.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = os.path.join(tmp, 'not_generated')
+            self.assertFalse(os.path.exists(missing))
+            import aipe_sketch.paths as paths
+            original = paths.GENERATED
+            try:
+                paths.GENERATED = missing
+                _, card, _, _ = build.build('buck', out_dir=OUT)
+                self.assertEqual(card.sub['connectivity'], 100)
+                self.assertFalse(os.path.exists(missing),
+                                 'rendering touched the previews directory')
+            finally:
+                paths.GENERATED = original
 
 
 class TestAudit(unittest.TestCase):
@@ -225,7 +238,7 @@ class TestAudit(unittest.TestCase):
             self.assertIn(kind, text)
         self.assertIn('library', text)
         self.assertIn('custom', text)
-        self.assertIn('from the library', text)
+        self.assertIn('cleaned_library', text)
 
     def test_report_matches_the_registry(self):
         for row in registry().audit():

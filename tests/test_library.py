@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aipe_sketch import library, symlib
-from aipe_sketch.paths import GENERATED, MASTER, REGISTRY_JSON, ROOT
+from aipe_sketch.paths import EXTRACTED, MASTER, REGISTRY_JSON, ROOT
 
 NS = symlib.NS
 _LOADED = None
@@ -162,7 +162,7 @@ class TestExtraction(unittest.TestCase):
             self.assertIn(want, section)
 
     def test_extraction_is_reproducible(self):
-        path = os.path.join(GENERATED, 'standard_elements', 'resistor.svg')
+        path = os.path.join(EXTRACTED, 'standard_elements', 'resistor.svg')
         with open(path, 'rb') as fh:
             first = fh.read()
         subprocess.run([sys.executable, 'tools/extract_library.py',
@@ -172,7 +172,7 @@ class TestExtraction(unittest.TestCase):
             self.assertEqual(fh.read(), first)
 
     def test_previews_are_normalised_to_a_local_origin(self):
-        path = os.path.join(GENERATED, 'standard_elements', 'resistor.svg')
+        path = os.path.join(EXTRACTED, 'standard_elements', 'resistor.svg')
         root = ET.parse(path).getroot()
         self.assertTrue(root.get('viewBox').startswith('0 0'))
         stamp = root.find('{https://github.com/AIPE-Sketch/symbol}extracted')
@@ -192,6 +192,7 @@ class TestMasterIsCanonical(unittest.TestCase):
                                    f'{module}.py')) as fh:
                 source = fh.read()
             self.assertNotIn('generated_symbols', source, module)
+            self.assertNotIn('extracted_library', source, module)
             self.assertNotIn('symbol_registry.json', source, module)
 
 

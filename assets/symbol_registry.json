@@ -15,7 +15,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/2x1_pin_connector.svg",
+      "file": "assets/extracted_library/connectors/2x1_pin_connector.svg",
       "flags": [],
       "original_bbox": [
         174.625,
@@ -78,7 +78,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/3x1_pin_connector.svg",
+      "file": "assets/extracted_library/connectors/3x1_pin_connector.svg",
       "flags": [],
       "original_bbox": [
         174.625,
@@ -157,7 +157,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/4x1_pin_connector.svg",
+      "file": "assets/extracted_library/connectors/4x1_pin_connector.svg",
       "flags": [],
       "original_bbox": [
         174.625,
@@ -252,7 +252,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/abc_alphabeta.svg",
+      "file": "assets/extracted_library/lines/abc_alphabeta.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -282,7 +282,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/abc_dq.svg",
+      "file": "assets/extracted_library/lines/abc_dq.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -312,7 +312,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/ac_ac.svg",
+      "file": "assets/extracted_library/lines/ac_ac.svg",
       "flags": [],
       "original_bbox": [
         101.8646,
@@ -359,7 +359,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/ac_dc.svg",
+      "file": "assets/extracted_library/lines/ac_dc.svg",
       "flags": [],
       "original_bbox": [
         112.4479,
@@ -422,7 +422,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/ac_dc_insulation.svg",
+      "file": "assets/extracted_library/lines/ac_dc_insulation.svg",
       "flags": [],
       "original_bbox": [
         112.4479,
@@ -501,7 +501,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/alphabeta_abc.svg",
+      "file": "assets/extracted_library/designators/alphabeta_abc.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -531,7 +531,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/alphabeta_dq.svg",
+      "file": "assets/extracted_library/designators/alphabeta_dq.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -561,7 +561,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/and.svg",
+      "file": "assets/extracted_library/logical_operations/and.svg",
       "flags": [],
       "original_bbox": [
         207.5656,
@@ -616,7 +616,7 @@
       },
       "curated_as": "battery",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/battery.svg",
+      "file": "assets/extracted_library/lines/battery.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -682,7 +682,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/bidirectional_gan.svg",
+      "file": "assets/extracted_library/optoelectronics/bidirectional_gan.svg",
       "flags": [],
       "original_bbox": [
         25.1354,
@@ -753,7 +753,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/bipolar_z_diode.svg",
+      "file": "assets/extracted_library/lines/bipolar_z_diode.svg",
       "flags": [],
       "original_bbox": [
         76.7292,
@@ -808,7 +808,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/bipolar_z_diode__g10711.svg",
+      "file": "assets/extracted_library/lines/bipolar_z_diode__g10711.svg",
       "flags": [],
       "original_bbox": [
         112.4479,
@@ -855,7 +855,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/bipolar_z_diode_full.svg",
+      "file": "assets/extracted_library/lines/bipolar_z_diode_full.svg",
       "flags": [],
       "original_bbox": [
         76.7292,
@@ -910,7 +910,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/capacitor.svg",
+      "file": "assets/extracted_library/lines/capacitor.svg",
       "flags": [],
       "original_bbox": [
         150.8125,
@@ -973,7 +973,7 @@
       },
       "curated_as": "cap",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/capacitor__g8210.svg",
+      "file": "assets/extracted_library/standard_elements/capacitor__g8210.svg",
       "flags": [],
       "original_bbox": [
         27.7812,
@@ -1039,7 +1039,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/capacitor_adjustable.svg",
+      "file": "assets/extracted_library/lines/capacitor_adjustable.svg",
       "flags": [
         "wrapper bbox 137.7 mm vs device 10.6 mm"
       ],
@@ -1112,7 +1112,7 @@
       },
       "curated_as": "cap_pol",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/capacitor_polarised.svg",
+      "file": "assets/extracted_library/standard_elements/capacitor_polarised.svg",
       "flags": [],
       "original_bbox": [
         42.3333,
@@ -1178,7 +1178,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/capacitor_polarized.svg",
+      "file": "assets/extracted_library/lines/capacitor_polarized.svg",
       "flags": [],
       "original_bbox": [
         129.6458,
@@ -1233,7 +1233,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/capacitor_polarized__g8850.svg",
+      "file": "assets/extracted_library/standard_elements/capacitor_polarized__g8850.svg",
       "flags": [],
       "original_bbox": [
         55.5625,
@@ -1288,7 +1288,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/coax_connector.svg",
+      "file": "assets/extracted_library/connectors/coax_connector.svg",
       "flags": [],
       "original_bbox": [
         174.625,
@@ -1343,7 +1343,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/measurement/current_measurement.svg",
+      "file": "assets/extracted_library/measurement/current_measurement.svg",
       "flags": [],
       "original_bbox": [
         58.2083,
@@ -1390,7 +1390,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/sources/current_source_iec.svg",
+      "file": "assets/extracted_library/sources/current_source_iec.svg",
       "flags": [],
       "original_bbox": [
         28.9719,
@@ -1445,7 +1445,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/d_flipflop.svg",
+      "file": "assets/extracted_library/logical_operations/d_flipflop.svg",
       "flags": [],
       "original_bbox": [
         224.7635,
@@ -1524,7 +1524,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/dc_ac.svg",
+      "file": "assets/extracted_library/lines/dc_ac.svg",
       "flags": [],
       "original_bbox": [
         123.0312,
@@ -1587,7 +1587,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/dc_ac_insulation.svg",
+      "file": "assets/extracted_library/lines/dc_ac_insulation.svg",
       "flags": [],
       "original_bbox": [
         123.0312,
@@ -1666,7 +1666,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/dc_dc.svg",
+      "file": "assets/extracted_library/lines/dc_dc.svg",
       "flags": [],
       "original_bbox": [
         101.8646,
@@ -1745,7 +1745,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/dc_dc_insulation.svg",
+      "file": "assets/extracted_library/lines/dc_dc_insulation.svg",
       "flags": [],
       "original_bbox": [
         101.8646,
@@ -1840,7 +1840,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_3.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_3.svg",
       "flags": [],
       "original_bbox": [
         252.6771,
@@ -1911,7 +1911,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_3__g28875.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_3__g28875.svg",
       "flags": [],
       "original_bbox": [
         263.2604,
@@ -1982,7 +1982,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_3__g28886.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_3__g28886.svg",
       "flags": [],
       "original_bbox": [
         275.1667,
@@ -2045,7 +2045,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_4.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_4.svg",
       "flags": [],
       "original_bbox": [
         275.1667,
@@ -2116,7 +2116,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_4__g28910.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_4__g28910.svg",
       "flags": [],
       "original_bbox": [
         263.2604,
@@ -2195,7 +2195,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_4__g28924.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_4__g28924.svg",
       "flags": [],
       "original_bbox": [
         252.6771,
@@ -2274,7 +2274,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_5.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_5.svg",
       "flags": [],
       "original_bbox": [
         252.6771,
@@ -2361,7 +2361,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_5__g29031.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_5__g29031.svg",
       "flags": [],
       "original_bbox": [
         263.2604,
@@ -2448,7 +2448,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/demux_5__g29044.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/demux_5__g29044.svg",
       "flags": [],
       "original_bbox": [
         275.1667,
@@ -2527,7 +2527,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/diac.svg",
+      "file": "assets/extracted_library/standard_elements/diac.svg",
       "flags": [],
       "original_bbox": [
         99.2187,
@@ -2582,7 +2582,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/diode.svg",
+      "file": "assets/extracted_library/standard_elements/diode.svg",
       "flags": [],
       "original_bbox": [
         29.1042,
@@ -2633,7 +2633,7 @@
       },
       "curated_as": "diode",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/diode__g13419.svg",
+      "file": "assets/extracted_library/standard_elements/diode__g13419.svg",
       "flags": [],
       "original_bbox": [
         79.375,
@@ -2683,7 +2683,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/diode__g6603.svg",
+      "file": "assets/extracted_library/lines/diode__g6603.svg",
       "flags": [],
       "original_bbox": [
         129.6458,
@@ -2730,7 +2730,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/diode_full.svg",
+      "file": "assets/extracted_library/standard_elements/diode_full.svg",
       "flags": [],
       "original_bbox": [
         29.1042,
@@ -2781,7 +2781,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/signals/division.svg",
+      "file": "assets/extracted_library/signals/division.svg",
       "flags": [],
       "original_bbox": [
         243.4167,
@@ -2844,7 +2844,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/dq_abc.svg",
+      "file": "assets/extracted_library/lines/dq_abc.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -2874,7 +2874,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/dq_alphabeta.svg",
+      "file": "assets/extracted_library/designators/dq_alphabeta.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -2904,7 +2904,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/filter.svg",
+      "file": "assets/extracted_library/designators/filter.svg",
       "flags": [
         "wrapper bbox 213.0 mm vs device 7.9 mm"
       ],
@@ -3001,7 +3001,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/flipflop.svg",
+      "file": "assets/extracted_library/logical_operations/flipflop.svg",
       "flags": [],
       "original_bbox": [
         224.7635,
@@ -3072,7 +3072,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/fuse.svg",
+      "file": "assets/extracted_library/designators/fuse.svg",
       "flags": [
         "wrapper bbox 51.7 mm vs device 7.9 mm"
       ],
@@ -3113,7 +3113,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/fuse__symbol11904.svg",
+      "file": "assets/extracted_library/standard_elements/fuse__symbol11904.svg",
       "flags": [],
       "original_bbox": [
         29.1042,
@@ -3152,7 +3152,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/g11514.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/g11514.svg",
       "flags": [],
       "original_bbox": [
         207.5656,
@@ -3207,7 +3207,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/magnetic/g18169.svg",
+      "file": "assets/extracted_library/magnetic/g18169.svg",
       "flags": [],
       "original_bbox": [
         66.221,
@@ -3278,7 +3278,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/g21.svg",
+      "file": "assets/extracted_library/optoelectronics/g21.svg",
       "flags": [],
       "original_bbox": [
         133.6146,
@@ -3365,7 +3365,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/g4770.svg",
+      "file": "assets/extracted_library/logical_operations/g4770.svg",
       "flags": [],
       "original_bbox": [
         226.2332,
@@ -3436,7 +3436,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/g5717.svg",
+      "file": "assets/extracted_library/lines/g5717.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -3466,7 +3466,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/g5725.svg",
+      "file": "assets/extracted_library/lines/g5725.svg",
       "flags": [],
       "original_bbox": [
         150.8125,
@@ -3513,7 +3513,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/g6288.svg",
+      "file": "assets/extracted_library/designators/g6288.svg",
       "flags": [],
       "original_bbox": [
         133.6146,
@@ -3592,7 +3592,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/g8575.svg",
+      "file": "assets/extracted_library/lines/g8575.svg",
       "flags": [
         "wrapper bbox 34.4 mm vs device 7.9 mm"
       ],
@@ -3641,7 +3641,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/magnetic/g9358.svg",
+      "file": "assets/extracted_library/magnetic/g9358.svg",
       "flags": [],
       "original_bbox": [
         48.4187,
@@ -3704,7 +3704,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/gain.svg",
+      "file": "assets/extracted_library/logical_operations/gain.svg",
       "flags": [
         "wrapper bbox 62.8 mm vs device 9.2 mm"
       ],
@@ -3753,7 +3753,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/gain__g9240.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/gain__g9240.svg",
       "flags": [],
       "original_bbox": [
         267.2292,
@@ -3783,7 +3783,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/gan.svg",
+      "file": "assets/extracted_library/designators/gan.svg",
       "flags": [],
       "original_bbox": [
         144.1979,
@@ -3870,7 +3870,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/gan_git_depletion.svg",
+      "file": "assets/extracted_library/optoelectronics/gan_git_depletion.svg",
       "flags": [],
       "original_bbox": [
         71.4375,
@@ -3933,7 +3933,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/gan_git_enhancement.svg",
+      "file": "assets/extracted_library/optoelectronics/gan_git_enhancement.svg",
       "flags": [],
       "original_bbox": [
         23.8125,
@@ -4012,7 +4012,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/gan_hempt_depletion.svg",
+      "file": "assets/extracted_library/optoelectronics/gan_hempt_depletion.svg",
       "flags": [],
       "original_bbox": [
         71.4375,
@@ -4083,7 +4083,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/gan_hempt_enhancement.svg",
+      "file": "assets/extracted_library/optoelectronics/gan_hempt_enhancement.svg",
       "flags": [],
       "original_bbox": [
         23.8125,
@@ -4170,7 +4170,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/generator.svg",
+      "file": "assets/extracted_library/lines/generator.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -4217,7 +4217,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/measurement/gnd.svg",
+      "file": "assets/extracted_library/measurement/gnd.svg",
       "flags": [],
       "original_bbox": [
         51.5937,
@@ -4264,7 +4264,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd__g12386.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd__g12386.svg",
       "flags": [],
       "original_bbox": [
         35.7187,
@@ -4299,7 +4299,7 @@
       },
       "curated_as": "gnd",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd__g9380.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd__g9380.svg",
       "flags": [],
       "original_bbox": [
         30.5607,
@@ -4340,7 +4340,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd__g9386.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd__g9386.svg",
       "flags": [],
       "original_bbox": [
         35.8524,
@@ -4403,7 +4403,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd__g9393.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd__g9393.svg",
       "flags": [],
       "original_bbox": [
         40.3503,
@@ -4450,7 +4450,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/measurement/gnd__g9400.svg",
+      "file": "assets/extracted_library/measurement/gnd__g9400.svg",
       "flags": [],
       "original_bbox": [
         46.1711,
@@ -4513,7 +4513,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd_connector.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd_connector.svg",
       "flags": [
         "wrapper bbox 50.0 mm vs device 3.0 mm"
       ],
@@ -4554,7 +4554,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd_connector__g7814.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd_connector__g7814.svg",
       "flags": [
         "wrapper bbox 42.7 mm vs device 3.0 mm"
       ],
@@ -4591,7 +4591,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd_connector__g7822.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd_connector__g7822.svg",
       "flags": [
         "wrapper bbox 50.0 mm vs device 2.8 mm"
       ],
@@ -4656,7 +4656,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/earth_symbols/gnd_connector__g7831.svg",
+      "file": "assets/extracted_library/earth_symbols/gnd_connector__g7831.svg",
       "flags": [
         "wrapper bbox 50.0 mm vs device 3.4 mm"
       ],
@@ -4705,7 +4705,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/measurement/gnd_connector__g7840.svg",
+      "file": "assets/extracted_library/measurement/gnd_connector__g7840.svg",
       "flags": [
         "wrapper bbox 50.0 mm vs device 4.6 mm"
       ],
@@ -4770,7 +4770,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/measurement/gnd_connector__g7846.svg",
+      "file": "assets/extracted_library/measurement/gnd_connector__g7846.svg",
       "flags": [
         "wrapper bbox 49.3 mm vs device 2.6 mm"
       ],
@@ -4819,7 +4819,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/grid.svg",
+      "file": "assets/extracted_library/lines/grid.svg",
       "flags": [],
       "original_bbox": [
         129.6458,
@@ -4866,7 +4866,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/hysteresis.svg",
+      "file": "assets/extracted_library/logical_operations/hysteresis.svg",
       "flags": [],
       "original_bbox": [
         211.6811,
@@ -4945,7 +4945,7 @@
       },
       "curated_as": "igbt",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/igbt.svg",
+      "file": "assets/extracted_library/connectors/igbt.svg",
       "flags": [],
       "original_bbox": [
         25.1354,
@@ -5032,7 +5032,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/igbt__g6184.svg",
+      "file": "assets/extracted_library/lines/igbt__g6184.svg",
       "flags": [],
       "original_bbox": [
         101.8646,
@@ -5119,7 +5119,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/igbt__symbol13530.svg",
+      "file": "assets/extracted_library/connectors/igbt__symbol13530.svg",
       "flags": [],
       "original_bbox": [
         26.4583,
@@ -5198,7 +5198,7 @@
       },
       "curated_as": "ind",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/inductor_air_core.svg",
+      "file": "assets/extracted_library/standard_elements/inductor_air_core.svg",
       "flags": [],
       "original_bbox": [
         76.7292,
@@ -5240,7 +5240,7 @@
       },
       "curated_as": "ind_core",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/inductor_cored.svg",
+      "file": "assets/extracted_library/standard_elements/inductor_cored.svg",
       "flags": [],
       "original_bbox": [
         41.0104,
@@ -5290,7 +5290,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/inductor_tapped.svg",
+      "file": "assets/extracted_library/lines/inductor_tapped.svg",
       "flags": [
         "wrapper bbox 222.3 mm vs device 7.9 mm"
       ],
@@ -5347,7 +5347,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/integrator.svg",
+      "file": "assets/extracted_library/logical_operations/integrator.svg",
       "flags": [],
       "original_bbox": [
         207.6979,
@@ -5394,7 +5394,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/integrator__g4781.svg",
+      "file": "assets/extracted_library/logical_operations/integrator__g4781.svg",
       "flags": [],
       "original_bbox": [
         236.8165,
@@ -5453,7 +5453,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/integrator__g8134.svg",
+      "file": "assets/extracted_library/logical_operations/integrator__g8134.svg",
       "flags": [],
       "original_bbox": [
         264.5978,
@@ -5508,7 +5508,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/jk_flipflop.svg",
+      "file": "assets/extracted_library/logical_operations/jk_flipflop.svg",
       "flags": [],
       "original_bbox": [
         215.5031,
@@ -5595,7 +5595,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/led.svg",
+      "file": "assets/extracted_library/standard_elements/led.svg",
       "flags": [],
       "original_bbox": [
         39.6875,
@@ -5662,7 +5662,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/led__g15781.svg",
+      "file": "assets/extracted_library/standard_elements/led__g15781.svg",
       "flags": [
         "wrapper bbox 101.3 mm vs device 10.6 mm"
       ],
@@ -5727,7 +5727,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/led_full.svg",
+      "file": "assets/extracted_library/standard_elements/led_full.svg",
       "flags": [],
       "original_bbox": [
         39.6875,
@@ -5794,7 +5794,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/miscellaneous/light_bulb.svg",
+      "file": "assets/extracted_library/miscellaneous/light_bulb.svg",
       "flags": [],
       "original_bbox": [
         88.6354,
@@ -5857,7 +5857,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/limitation.svg",
+      "file": "assets/extracted_library/logical_operations/limitation.svg",
       "flags": [],
       "original_bbox": [
         247.3854,
@@ -5920,7 +5920,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/signals/limitation_2.svg",
+      "file": "assets/extracted_library/signals/limitation_2.svg",
       "flags": [],
       "original_bbox": [
         247.3854,
@@ -5975,7 +5975,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/load_r.svg",
+      "file": "assets/extracted_library/lines/load_r.svg",
       "flags": [
         "wrapper bbox 48.9 mm vs device 7.9 mm"
       ],
@@ -6024,7 +6024,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/load_rc.svg",
+      "file": "assets/extracted_library/lines/load_rc.svg",
       "flags": [],
       "original_bbox": [
         123.0312,
@@ -6103,7 +6103,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/load_rl.svg",
+      "file": "assets/extracted_library/lines/load_rl.svg",
       "flags": [
         "wrapper bbox 133.0 mm vs device 7.9 mm"
       ],
@@ -6176,7 +6176,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/signals/lut.svg",
+      "file": "assets/extracted_library/signals/lut.svg",
       "flags": [],
       "original_bbox": [
         275.1811,
@@ -6239,7 +6239,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/signals/lut__g9982.svg",
+      "file": "assets/extracted_library/signals/lut__g9982.svg",
       "flags": [],
       "original_bbox": [
         280.4728,
@@ -6310,7 +6310,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/mosfet.svg",
+      "file": "assets/extracted_library/lines/mosfet.svg",
       "flags": [],
       "original_bbox": [
         112.4479,
@@ -6417,7 +6417,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/mosfet__g6380.svg",
+      "file": "assets/extracted_library/lines/mosfet__g6380.svg",
       "flags": [],
       "original_bbox": [
         123.0312,
@@ -6508,7 +6508,7 @@
       },
       "curated_as": "nmos_don",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/mosfet_n_depletion.svg",
+      "file": "assets/extracted_library/standard_elements/mosfet_n_depletion.svg",
       "flags": [],
       "original_bbox": [
         26.4583,
@@ -6599,7 +6599,7 @@
       },
       "curated_as": "nmos",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/mosfet_n_enhancement.svg",
+      "file": "assets/extracted_library/standard_elements/mosfet_n_enhancement.svg",
       "flags": [],
       "original_bbox": [
         26.4583,
@@ -6706,7 +6706,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/mosfet_normally_off.svg",
+      "file": "assets/extracted_library/connectors/mosfet_normally_off.svg",
       "flags": [],
       "original_bbox": [
         26.4583,
@@ -6825,7 +6825,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/mosfet_normally_on.svg",
+      "file": "assets/extracted_library/standard_elements/mosfet_normally_on.svg",
       "flags": [],
       "original_bbox": [
         26.4583,
@@ -6920,7 +6920,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/motor.svg",
+      "file": "assets/extracted_library/lines/motor.svg",
       "flags": [],
       "original_bbox": [
         129.6458,
@@ -6967,7 +6967,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/mux_3.svg",
+      "file": "assets/extracted_library/logical_operations/mux_3.svg",
       "flags": [],
       "original_bbox": [
         219.6042,
@@ -7038,7 +7038,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/mux_3__g28840.svg",
+      "file": "assets/extracted_library/logical_operations/mux_3__g28840.svg",
       "flags": [],
       "original_bbox": [
         230.1875,
@@ -7109,7 +7109,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/mux_3__g28851.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/mux_3__g28851.svg",
       "flags": [],
       "original_bbox": [
         242.0938,
@@ -7172,7 +7172,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/mux_4.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/mux_4.svg",
       "flags": [],
       "original_bbox": [
         242.0938,
@@ -7243,7 +7243,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/mux_4__g28948.svg",
+      "file": "assets/extracted_library/logical_operations/mux_4__g28948.svg",
       "flags": [],
       "original_bbox": [
         230.1875,
@@ -7322,7 +7322,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/mux_4__g28962.svg",
+      "file": "assets/extracted_library/logical_operations/mux_4__g28962.svg",
       "flags": [],
       "original_bbox": [
         219.6042,
@@ -7401,7 +7401,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/mux_5.svg",
+      "file": "assets/extracted_library/logical_operations/mux_5.svg",
       "flags": [],
       "original_bbox": [
         219.6042,
@@ -7488,7 +7488,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/mux_5__g28990.svg",
+      "file": "assets/extracted_library/logical_operations/mux_5__g28990.svg",
       "flags": [],
       "original_bbox": [
         230.1875,
@@ -7575,7 +7575,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/mux_5__g29003.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/mux_5__g29003.svg",
       "flags": [],
       "original_bbox": [
         242.0938,
@@ -7654,7 +7654,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/nand.svg",
+      "file": "assets/extracted_library/logical_operations/nand.svg",
       "flags": [],
       "original_bbox": [
         216.826,
@@ -7709,7 +7709,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/ladder_logic_symbols/nor.svg",
+      "file": "assets/extracted_library/ladder_logic_symbols/nor.svg",
       "flags": [
         "wrapper bbox 41.4 mm vs device 6.7 mm"
       ],
@@ -7766,7 +7766,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/npn.svg",
+      "file": "assets/extracted_library/connectors/npn.svg",
       "flags": [],
       "original_bbox": [
         30.4271,
@@ -7829,7 +7829,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/npn__g6402.svg",
+      "file": "assets/extracted_library/designators/npn__g6402.svg",
       "flags": [],
       "original_bbox": [
         133.6146,
@@ -7900,7 +7900,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/opamp_l.svg",
+      "file": "assets/extracted_library/logical_operations/opamp_l.svg",
       "flags": [],
       "original_bbox": [
         256.6458,
@@ -7947,7 +7947,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/opamp_m.svg",
+      "file": "assets/extracted_library/logical_operations/opamp_m.svg",
       "flags": [],
       "original_bbox": [
         246.0625,
@@ -7994,7 +7994,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/opamp_s.svg",
+      "file": "assets/extracted_library/logical_operations/opamp_s.svg",
       "flags": [],
       "original_bbox": [
         236.8021,
@@ -8041,7 +8041,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/switches/opener.svg",
+      "file": "assets/extracted_library/switches/opener.svg",
       "flags": [],
       "original_bbox": [
         25.1354,
@@ -8088,7 +8088,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/opener__g5878.svg",
+      "file": "assets/extracted_library/lines/opener__g5878.svg",
       "flags": [],
       "original_bbox": [
         150.8125,
@@ -8135,7 +8135,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/opto_isolator.svg",
+      "file": "assets/extracted_library/optoelectronics/opto_isolator.svg",
       "flags": [
         "wrapper bbox 170.0 mm vs device 14.6 mm"
       ],
@@ -8224,7 +8224,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/opto_isolator_empty.svg",
+      "file": "assets/extracted_library/optoelectronics/opto_isolator_empty.svg",
       "flags": [
         "wrapper bbox 180.6 mm vs device 14.6 mm"
       ],
@@ -8317,7 +8317,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/optocoupler.svg",
+      "file": "assets/extracted_library/lines/optocoupler.svg",
       "flags": [
         "wrapper bbox 112.4 mm vs device 7.9 mm"
       ],
@@ -8422,7 +8422,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/p.svg",
+      "file": "assets/extracted_library/logical_operations/p.svg",
       "flags": [],
       "original_bbox": [
         248.7227,
@@ -8485,7 +8485,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/phototransistor_npn.svg",
+      "file": "assets/extracted_library/optoelectronics/phototransistor_npn.svg",
       "flags": [],
       "original_bbox": [
         157.4271,
@@ -8556,7 +8556,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/optoelectronics/phototransistor_pnp.svg",
+      "file": "assets/extracted_library/optoelectronics/phototransistor_pnp.svg",
       "flags": [],
       "original_bbox": [
         157.4271,
@@ -8631,7 +8631,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/pi.svg",
+      "file": "assets/extracted_library/logical_operations/pi.svg",
       "flags": [],
       "original_bbox": [
         236.8165,
@@ -8694,7 +8694,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/pnp.svg",
+      "file": "assets/extracted_library/connectors/pnp.svg",
       "flags": [],
       "original_bbox": [
         22.4896,
@@ -8761,7 +8761,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/potentiometer.svg",
+      "file": "assets/extracted_library/standard_elements/potentiometer.svg",
       "flags": [],
       "original_bbox": [
         54.2396,
@@ -8816,7 +8816,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/potentiometer__g21638.svg",
+      "file": "assets/extracted_library/lines/potentiometer__g21638.svg",
       "flags": [],
       "original_bbox": [
         71.1729,
@@ -8871,7 +8871,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/potentiometer_us.svg",
+      "file": "assets/extracted_library/standard_elements/potentiometer_us.svg",
       "flags": [],
       "original_bbox": [
         54.2396,
@@ -8918,7 +8918,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/potentiometer_us__g7112.svg",
+      "file": "assets/extracted_library/lines/potentiometer_us__g7112.svg",
       "flags": [],
       "original_bbox": [
         71.4375,
@@ -8965,7 +8965,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/product.svg",
+      "file": "assets/extracted_library/logical_operations/product.svg",
       "flags": [],
       "original_bbox": [
         181.2396,
@@ -9036,7 +9036,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/magnetic/pv.svg",
+      "file": "assets/extracted_library/magnetic/pv.svg",
       "flags": [],
       "original_bbox": [
         74.0833,
@@ -9083,7 +9083,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/miscellaneous/relay.svg",
+      "file": "assets/extracted_library/miscellaneous/relay.svg",
       "flags": [
         "wrapper bbox 232.7 mm vs device 8.9 mm"
       ],
@@ -9156,7 +9156,7 @@
       },
       "curated_as": "res",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/resistor.svg",
+      "file": "assets/extracted_library/standard_elements/resistor.svg",
       "flags": [],
       "original_bbox": [
         29.1042,
@@ -9206,7 +9206,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/resistor_us.svg",
+      "file": "assets/extracted_library/standard_elements/resistor_us.svg",
       "flags": [],
       "original_bbox": [
         84.6667,
@@ -9245,7 +9245,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/rs232_connector.svg",
+      "file": "assets/extracted_library/connectors/rs232_connector.svg",
       "flags": [],
       "original_bbox": [
         172.7729,
@@ -9275,7 +9275,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/schottky.svg",
+      "file": "assets/extracted_library/lines/schottky.svg",
       "flags": [
         "wrapper bbox 29.1 mm vs device 10.6 mm"
       ],
@@ -9324,7 +9324,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/schottky_diode.svg",
+      "file": "assets/extracted_library/standard_elements/schottky_diode.svg",
       "flags": [],
       "original_bbox": [
         63.5,
@@ -9375,7 +9375,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/schottky_diode_full.svg",
+      "file": "assets/extracted_library/lines/schottky_diode_full.svg",
       "flags": [],
       "original_bbox": [
         63.5,
@@ -9426,7 +9426,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/miscellaneous/spark_gap.svg",
+      "file": "assets/extracted_library/miscellaneous/spark_gap.svg",
       "flags": [],
       "original_bbox": [
         72.2312,
@@ -9473,7 +9473,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/stransformer_yd.svg",
+      "file": "assets/extracted_library/designators/stransformer_yd.svg",
       "flags": [
         "wrapper bbox 90.6 mm vs device 7.9 mm"
       ],
@@ -9518,7 +9518,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/sum.svg",
+      "file": "assets/extracted_library/logical_operations/sum.svg",
       "flags": [],
       "original_bbox": [
         215.6354,
@@ -9573,7 +9573,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/sum__g19922.svg",
+      "file": "assets/extracted_library/logical_operations/sum__g19922.svg",
       "flags": [],
       "original_bbox": [
         223.5117,
@@ -9628,7 +9628,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/sum__g20020.svg",
+      "file": "assets/extracted_library/logical_operations/sum__g20020.svg",
       "flags": [],
       "original_bbox": [
         214.3125,
@@ -9683,7 +9683,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/sum__g20030.svg",
+      "file": "assets/extracted_library/logical_operations/sum__g20030.svg",
       "flags": [],
       "original_bbox": [
         214.3125,
@@ -9738,7 +9738,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/sum__g20745.svg",
+      "file": "assets/extracted_library/logical_operations/sum__g20745.svg",
       "flags": [],
       "original_bbox": [
         165.3646,
@@ -9793,7 +9793,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/logical_operations/sum__g8669.svg",
+      "file": "assets/extracted_library/logical_operations/sum__g8669.svg",
       "flags": [],
       "original_bbox": [
         165.3646,
@@ -9848,7 +9848,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/switch.svg",
+      "file": "assets/extracted_library/lines/switch.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -9895,7 +9895,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/switches/switch__g6517.svg",
+      "file": "assets/extracted_library/switches/switch__g6517.svg",
       "flags": [],
       "original_bbox": [
         25.1354,
@@ -9950,7 +9950,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/switches/switch__g7505.svg",
+      "file": "assets/extracted_library/switches/switch__g7505.svg",
       "flags": [],
       "original_bbox": [
         30.4271,
@@ -9997,7 +9997,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/switches/switch__g7512.svg",
+      "file": "assets/extracted_library/switches/switch__g7512.svg",
       "flags": [],
       "original_bbox": [
         30.4271,
@@ -10044,7 +10044,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/switch__g9124.svg",
+      "file": "assets/extracted_library/lines/switch__g9124.svg",
       "flags": [],
       "original_bbox": [
         129.6458,
@@ -10091,7 +10091,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/thyristor.svg",
+      "file": "assets/extracted_library/standard_elements/thyristor.svg",
       "flags": [],
       "original_bbox": [
         92.6042,
@@ -10146,7 +10146,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/transformer.svg",
+      "file": "assets/extracted_library/lines/transformer.svg",
       "flags": [
         "wrapper bbox 289.0 mm vs device 7.9 mm"
       ],
@@ -10227,7 +10227,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/transformer__g5868.svg",
+      "file": "assets/extracted_library/lines/transformer__g5868.svg",
       "flags": [
         "wrapper bbox 310.1 mm vs device 7.9 mm"
       ],
@@ -10324,7 +10324,7 @@
       },
       "curated_as": "transformer",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/transformer__g7138.svg",
+      "file": "assets/extracted_library/standard_elements/transformer__g7138.svg",
       "flags": [
         "wrapper bbox 144.4 mm vs device 12.6 mm"
       ],
@@ -10402,7 +10402,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/transformer__g7168.svg",
+      "file": "assets/extracted_library/lines/transformer__g7168.svg",
       "flags": [
         "wrapper bbox 162.7 mm vs device 12.6 mm"
       ],
@@ -10483,7 +10483,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/transformer__g8072.svg",
+      "file": "assets/extracted_library/lines/transformer__g8072.svg",
       "flags": [
         "wrapper bbox 90.6 mm vs device 7.9 mm"
       ],
@@ -10515,7 +10515,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/transformer_dd.svg",
+      "file": "assets/extracted_library/designators/transformer_dd.svg",
       "flags": [
         "wrapper bbox 91.9 mm vs device 7.9 mm"
       ],
@@ -10547,7 +10547,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/transformer_dz.svg",
+      "file": "assets/extracted_library/lines/transformer_dz.svg",
       "flags": [
         "wrapper bbox 90.6 mm vs device 7.9 mm"
       ],
@@ -10620,7 +10620,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/designators/transformer_yy.svg",
+      "file": "assets/extracted_library/designators/transformer_yy.svg",
       "flags": [
         "wrapper bbox 80.0 mm vs device 7.9 mm"
       ],
@@ -10677,7 +10677,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/transformer_yz.svg",
+      "file": "assets/extracted_library/lines/transformer_yz.svg",
       "flags": [
         "wrapper bbox 90.6 mm vs device 7.9 mm"
       ],
@@ -10762,7 +10762,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/triac.svg",
+      "file": "assets/extracted_library/lines/triac.svg",
       "flags": [],
       "original_bbox": [
         108.4792,
@@ -10817,7 +10817,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/connectors/usb_connector.svg",
+      "file": "assets/extracted_library/connectors/usb_connector.svg",
       "flags": [],
       "original_bbox": [
         170.6562,
@@ -10872,7 +10872,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/valve.svg",
+      "file": "assets/extracted_library/standard_elements/valve.svg",
       "flags": [],
       "original_bbox": [
         79.375,
@@ -10927,7 +10927,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/valve__g6626.svg",
+      "file": "assets/extracted_library/lines/valve__g6626.svg",
       "flags": [],
       "original_bbox": [
         140.2292,
@@ -10982,7 +10982,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/valve__g9282.svg",
+      "file": "assets/extracted_library/standard_elements/valve__g9282.svg",
       "flags": [],
       "original_bbox": [
         42.3333,
@@ -11045,7 +11045,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/lines/valve__g9498.svg",
+      "file": "assets/extracted_library/lines/valve__g9498.svg",
       "flags": [],
       "original_bbox": [
         150.8125,
@@ -11108,7 +11108,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/varistor.svg",
+      "file": "assets/extracted_library/standard_elements/varistor.svg",
       "flags": [],
       "original_bbox": [
         42.5979,
@@ -11163,7 +11163,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/varistor_us.svg",
+      "file": "assets/extracted_library/standard_elements/varistor_us.svg",
       "flags": [],
       "original_bbox": [
         42.5979,
@@ -11210,7 +11210,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/measurement/voltage_measurement.svg",
+      "file": "assets/extracted_library/measurement/voltage_measurement.svg",
       "flags": [],
       "original_bbox": [
         58.2083,
@@ -11257,7 +11257,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/sources/voltage_source_ac.svg",
+      "file": "assets/extracted_library/sources/voltage_source_ac.svg",
       "flags": [
         "wrapper bbox 91.9 mm vs device 10.6 mm"
       ],
@@ -11314,7 +11314,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/sources/voltage_source_iec.svg",
+      "file": "assets/extracted_library/sources/voltage_source_iec.svg",
       "flags": [],
       "original_bbox": [
         38.2323,
@@ -11353,7 +11353,7 @@
       },
       "curated_as": "isource",
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/sources/voltage_source_plain.svg",
+      "file": "assets/extracted_library/sources/voltage_source_plain.svg",
       "flags": [],
       "original_bbox": [
         58.2083,
@@ -11403,7 +11403,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/sources/voltage_source_square.svg",
+      "file": "assets/extracted_library/sources/voltage_source_square.svg",
       "flags": [],
       "original_bbox": [
         51.5938,
@@ -11458,7 +11458,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/z_diode.svg",
+      "file": "assets/extracted_library/standard_elements/z_diode.svg",
       "flags": [],
       "original_bbox": [
         51.5938,
@@ -11509,7 +11509,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/z_diode_1.svg",
+      "file": "assets/extracted_library/standard_elements/z_diode_1.svg",
       "flags": [],
       "original_bbox": [
         60.8542,
@@ -11556,7 +11556,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/z_diode_1_empty.svg",
+      "file": "assets/extracted_library/standard_elements/z_diode_1_empty.svg",
       "flags": [],
       "original_bbox": [
         60.8542,
@@ -11611,7 +11611,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/z_diode_1_full.svg",
+      "file": "assets/extracted_library/standard_elements/z_diode_1_full.svg",
       "flags": [],
       "original_bbox": [
         60.8542,
@@ -11666,7 +11666,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/z_diode__g10556.svg",
+      "file": "assets/extracted_library/standard_elements/z_diode__g10556.svg",
       "flags": [
         "wrapper bbox 22.5 mm vs device 10.6 mm"
       ],
@@ -11715,7 +11715,7 @@
       },
       "curated_as": null,
       "default_orientation": "vertical",
-      "file": "assets/generated_symbols/standard_elements/z_diode_full.svg",
+      "file": "assets/extracted_library/standard_elements/z_diode_full.svg",
       "flags": [],
       "original_bbox": [
         51.5938,

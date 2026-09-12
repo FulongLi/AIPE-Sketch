@@ -4,5 +4,6 @@ __pycache__/
 .venv/
 out/*.png
 assets/generated_symbols/
+assets/extracted_library/
 out/catalog_*.png
 out/library_report.*

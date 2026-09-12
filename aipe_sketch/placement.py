@@ -14,7 +14,7 @@ class Placed:
 
     __slots__ = ('ref', 'kind', 'x', 'y', 'rot', 'mirror', 'ports', 'bbox',
                  'group', 'slot', 'row', 'spec', 'label', 'sub', 'label_side',
-                 'italic')
+                 'italic', 'interface', 'label_offset', 'marker')
 
     def __init__(self, ref, kind, x, y, rot, mirror, ports, bbox, spec):
         self.ref, self.kind = ref, kind
@@ -23,13 +23,24 @@ class Placed:
         self.ports, self.bbox, self.spec = ports, bbox, spec
         self.group = self.slot = self.row = None
         self.label = self.sub = None
-        self.label_side = 'right'
+        self.label_side = spec.label_side
+        self.label_offset = spec.label_offset
         self.italic = True
+        self.interface = None
+        self.marker = None          # (cx, cy, r) once routing is known
 
     @property
     def clearance_bbox(self):
-        x0, y0, x1, y1 = self.bbox
-        return (x0 - G, y0 - G, x1 + G, y1 + G)
+        """The body grown by this symbol's own keep-out, not a fixed margin."""
+        return self.spec.margin_box(self.bbox)
+
+    @property
+    def external(self):
+        return self.interface is not None
+
+    @property
+    def marks_boundary(self):
+        return self.interface == 'power'
 
     def port(self, name):
         if name not in self.ports:
@@ -112,7 +123,13 @@ def place(plan, netlist, specs):
                 obj.group, obj.slot, obj.row = group.id, si, item.row
                 obj.label, obj.sub = comp.label, comp.sub
                 obj.italic = comp.italic
-                obj.label_side = item.label_side
+                obj.interface = comp.interface
+                if item.label_side is not None:
+                    obj.label_side = item.label_side
+                elif item.rot % 180 and spec.orientation == 'vertical':
+                    # laid on its side: a horizontal L/C/R/D is labelled above
+                    obj.label_side = 'above'
+                    obj.label_offset = max(obj.label_offset, 2.2)
                 placed[item.ref] = obj
         last = first + (len(group.slots) - 1) * pitch
         extents[group.id] = (first, last)

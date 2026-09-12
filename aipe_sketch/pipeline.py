@@ -15,30 +15,53 @@ from .parts import build_specs, port_table
 from .pins import COARSE as G
 from .sketch import Sketch
 
-LABEL_GAP = 1.3
-GLYPH_W, LINE_H, TEXT_PAD = 0.62, 1.15, 0.35
+GLYPH_W, LINE_H = 0.62, 1.15
+# Clearance demanded around every label: nothing -- body, other label or
+# wire -- may enter this box.  It is a margin, not merely non-overlap.
+LABEL_PAD_X = 0.5 * G
+LABEL_PAD_Y = 0.35 * G
+LABEL_SIZE = 2.82222
+
+# An 'above' label is anchored by its baseline, so its box still reaches
+# below that by the descent plus the clearance pad.  Any offset smaller than
+# this would put the label's keep-out inside its own body.
+MIN_STACK_OFFSET = 0.25 * LINE_H * LABEL_SIZE + LABEL_PAD_Y + 0.2
 LABEL_SIDES = ('right', 'left', 'above', 'below')
 
 
-def text_bbox(x, y, text, sub, anchor, size):
+def text_bbox(x, y, text, sub, anchor, size, pad_x=None, pad_y=None):
     n = len(text) + (len(sub) * 0.72 if sub else 0)
     w = n * size * GLYPH_W
     h = size * LINE_H
     x0 = x if anchor == 'start' else (x - w if anchor == 'end' else x - w / 2)
-    return (x0 - TEXT_PAD, y - h * 0.80 - TEXT_PAD,
-            x0 + w + TEXT_PAD, y + h * 0.25 + TEXT_PAD)
+    px = LABEL_PAD_X if pad_x is None else pad_x
+    py = LABEL_PAD_Y if pad_y is None else pad_y
+    return (x0 - px, y - h * 0.80 - py, x0 + w + px, y + h * 0.25 + py)
 
 
-def label_anchor(part, side):
+def ink_bbox(x, y, text, sub, anchor, size):
+    """The glyphs alone, without the clearance margin."""
+    return text_bbox(x, y, text, sub, anchor, size, pad_x=0.0, pad_y=0.0)
+
+
+def label_anchor(part, side, offset=None):
+    """Where a label sits relative to its body.
+
+    The offset comes from the registry per symbol role, so equivalent
+    components place their labels at identical distances.
+    """
+    gap = part.label_offset if offset is None else offset
     x0, y0, x1, y1 = part.bbox
+    if side in ('above', 'below'):
+        gap = max(gap, MIN_STACK_OFFSET)
     cy = (y0 + y1) / 2
     if side == 'right':
-        return x1 + LABEL_GAP, cy + 0.9, 'start'
+        return x1 + gap, cy + 0.9, 'start'
     if side == 'left':
-        return x0 - LABEL_GAP, cy + 0.9, 'end'
+        return x0 - gap, cy + 0.9, 'end'
     if side == 'above':
-        return (x0 + x1) / 2, y0 - LABEL_GAP, 'middle'
-    return (x0 + x1) / 2, y1 + LABEL_GAP + 2.2, 'middle'
+        return (x0 + x1) / 2, y0 - gap, 'middle'
+    return (x0 + x1) / 2, y1 + gap + 2.2, 'middle'
 
 
 class Schematic:
@@ -140,10 +163,10 @@ class Schematic:
             if not part.label:
                 continue
             x, y, anchor = label_anchor(part, self._sides[ref])
-            box = text_bbox(x, y, part.label, part.sub, anchor, 2.82222)
+            box = text_bbox(x, y, part.label, part.sub, anchor, LABEL_SIZE)
             self.labels.append((ref, box))
             self.texts.append(dict(x=x, y=y, text=part.label, sub=part.sub,
-                                   anchor=anchor, size=2.82222,
+                                   anchor=anchor, size=LABEL_SIZE,
                                    italic=part.italic))
         for note in self._notes:
             self.texts.append(note['text_op'])
@@ -166,6 +189,45 @@ class Schematic:
         self._notes.append(dict(text_op=op, key=f'"{text}"',
                                 box=text_bbox(x, y, text, sub, anchor, size)))
         self.build_labels()
+
+    # -------------------------------------------------------------- markers
+    def resolve_markers(self):
+        """Place the boundary circle of every power interface.
+
+        The circle sits just outside the wire's end, along the wire's own
+        axis, so the wire stops at the circumference instead of running to
+        the centre.  The outward direction is taken from the wire that
+        actually arrives, so nothing has to be declared by hand.
+        """
+        from .parts import TERMINAL_R
+        for ref, part in self.placed.items():
+            part.marker = None
+            if not part.marks_boundary:
+                continue
+            pt = part.port(next(iter(part.ports)))
+            outward = self._outward(pt)
+            cx = pt[0] + outward[0] * TERMINAL_R
+            cy = pt[1] + outward[1] * TERMINAL_R
+            part.marker = (round(cx, 4), round(cy, 4), TERMINAL_R)
+            # the circle is part of the symbol's visual extent
+            part.bbox = (min(part.bbox[0], cx - TERMINAL_R),
+                         min(part.bbox[1], cy - TERMINAL_R),
+                         max(part.bbox[2], cx + TERMINAL_R),
+                         max(part.bbox[3], cy + TERMINAL_R))
+
+    def _outward(self, pt):
+        """Unit vector pointing away from the wire that reaches this point."""
+        for net_paths in self.paths.values():
+            for pts in net_paths:
+                for a, b in router.path_segments(pts):
+                    for end, other in ((a, b), (b, a)):
+                        if (abs(end[0] - pt[0]) < router.TOL
+                                and abs(end[1] - pt[1]) < router.TOL):
+                            dx, dy = end[0] - other[0], end[1] - other[1]
+                            length = (dx * dx + dy * dy) ** 0.5
+                            if length > router.TOL:
+                                return (dx / length, dy / length)
+        return (1.0, 0.0)
 
     # -------------------------------------------------------------- sheet
     def content_box(self):
@@ -213,7 +275,8 @@ class Schematic:
                                   (g.id, [i.ref for s in g.slots
                                           for i in s.items])
                                   for g in self.plan.groups],
-                              notes=self._notes)
+                              notes=self._notes,
+                              registry=self.specs)
 
     def repair(self, max_iterations=8):
         """Fix geometry only: move labels, widen rails, reroute."""
@@ -231,8 +294,19 @@ class Schematic:
                 break
         return card, log
 
+    def _class_of(self, ref):
+        """The equivalence class a component belongs to, itself if unique."""
+        for refs in self.classes.values():
+            if ref in refs:
+                return [r for r in refs if r in self.placed]
+        return [ref]
+
     def _repair_labels(self, card, log):
-        """Try the other sides for any label that collides."""
+        """Try other sides for a colliding label.
+
+        Equivalent components are moved together: a repeated structure with
+        one label on a different side reads worse than the collision did.
+        """
         offenders = set()
         for fault in card.faults:
             if fault.startswith('label '):
@@ -242,20 +316,30 @@ class Schematic:
         if not offenders:
             return False
         moved = False
+        handled = set()
         for ref in sorted(offenders):
-            part = self.placed[ref]
+            if ref in handled:
+                continue
+            group = self._class_of(ref)
+            handled.update(group)
+            original = {r: self._sides[r] for r in group}
             for side in LABEL_SIDES:
-                if side == self._sides[ref]:
+                if side == original[ref]:
                     continue
-                self._sides[ref] = side
+                for r in group:
+                    self._sides[r] = side
                 self.build_labels()
                 trial = self.evaluate()
-                if not any(f.startswith(f'label {ref} ') for f in trial.faults):
-                    log.append(f'moved label {ref} to the {side}')
+                if not any(f.startswith(f'label {r} ')
+                           for r in group for f in trial.faults):
+                    log.append(f'moved label{"s" if len(group) > 1 else ""} '
+                               f'{", ".join(group)} to the {side}')
                     moved = True
                     break
             else:
-                continue
+                for r, side in original.items():
+                    self._sides[r] = side
+                self.build_labels()
         return moved
 
     # -------------------------------------------------------------- render
@@ -264,6 +348,8 @@ class Schematic:
             self.route()
         if not self.labels:
             self.build_labels()
+        self.resolve_markers()
+        self.build_labels()
         dx, dy = self.fit_sheet()
         if dx or dy:
             self._shift(dx, dy)
@@ -302,6 +388,9 @@ class Schematic:
             part.ports = {p: (x + dx, y + dy) for p, (x, y) in part.ports.items()}
             x0, y0, x1, y1 = part.bbox
             part.bbox = (x0 + dx, y0 + dy, x1 + dx, y1 + dy)
+            if part.marker:
+                cx, cy, r = part.marker
+                part.marker = (cx + dx, cy + dy, r)
         self.paths = {net: [[(x + dx, y + dy) for x, y in pts] for pts in ps]
                       for net, ps in self.paths.items()}
         for note in self._notes:
@@ -333,9 +422,10 @@ class Schematic:
 
         for a, b in decor.get('strokes', ()):
             sketch.wire(at(a), at(b))
-        for cx, cy, r in decor.get('circles', ()):
-            x, y = at((cx, cy))
-            sketch.open_circle(x, y, r)
+        # An open ring marks a main power-side boundary and nothing else:
+        # not a gate drive, not a control port, never an internal node.
+        if part.marker:
+            sketch.open_circle(*part.marker)
         for tx, ty, text, size in decor.get('texts', ()):
             x, y = at((tx, ty))
             sketch.label(x, y, text, size=size, anchor='middle', italic=False)

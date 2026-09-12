@@ -10,6 +10,10 @@ from . import router
 from .router import TOL
 from .pins import COARSE as G
 
+# label clearance, mirrored from the pipeline so the checklist can report it
+LABEL_PAD_X = 0.5 * G
+LABEL_PAD_Y = 0.35 * G
+
 CELL = 4 * G                 # one component dimension, millimetres
 LONG_RUN = 2 * CELL          # beyond this a wire is a deliberate long haul
 CONTROL_PORTS = ('g',)       # gate leads are not part of the power path
@@ -188,6 +192,14 @@ def floating_ends(placed, paths):
     return loose
 
 
+def _boundary_verdict(placed, notes):
+    marked = [r for r, p in placed.items()
+              if getattr(p, 'marker', None) is not None]
+    if not marked:
+        return 'no exposed port; the drawing ends at its load network'
+    return f'{len(marked)} marked port(s): {", ".join(sorted(marked))}'
+
+
 def _on_interior(pt, seg):
     (x0, y0), (x1, y1) = seg
     if abs(y0 - y1) < TOL:
@@ -288,6 +300,19 @@ def occupancy(bodies, paths, cell=None):
     return round(best / max(1, rows * cols), 4)
 
 
+def boundary_status(placed, notes=()):
+    """How VIN and VOUT are represented in this drawing."""
+    ported, annotated = {}, set()
+    for ref, part in placed.items():
+        if part.label in ('VIN', 'VOUT'):
+            ported[part.label] = ref
+    for note in notes:
+        text = note['text_op']['text']
+        if text in ('VIN', 'VOUT'):
+            annotated.add(text)
+    return ported, annotated
+
+
 def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
     """The whole-drawing questions, answered from the measurements.
 
@@ -361,11 +386,9 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
         '7 sources drawn conventionally': ok(
             all(placed[r].spec.decor for r in sources) if sources else True,
             f'{len(sources)} source(s)'),
-        '8 Vin and Vout identifiable': (
-            ok('Vin' in named and ('Vout' in named or 'A' in named),
-               f'{sorted(n for n in named if n.startswith("V") or len(n) == 1)}')
-            if power_ports else
-            ('N/A', 'differential output, no single-ended node')),
+        '8 input and output named once': ok(
+            raw['redundant_annotation'] == 0,
+            annotation_policy(placed, netlist, notes)),
         '9 labels consistently positioned': ok(raw['label_side'] == 0),
         '10 transformer compactly connected': (
             ok(tx_ok, tx_note) if has_tx else ('N/A', 'no transformer')),
@@ -377,4 +400,339 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
                                                 ' -> '.join(order)),
         '15 no unexplained empty region': ok(
             raw['largest_void'] <= 0.25, f"largest void {raw['largest_void']}"),
+
+        # --- the visual refinement pass -------------------------------
+        '16 markers only on power interfaces': ok(
+            raw['external_marker'] == 0,
+            f'{raw["marker_count"]} marker(s) on {len(power_ports)} power '
+            f'port(s); {len(gate_ports)} control port(s) unmarked'),
+        '17 VIN/VOUT clear of neighbouring labels': ok(
+            raw['label_overlap'] == 0,
+            f'clearance {LABEL_PAD_X:.2f} x {LABEL_PAD_Y:.2f} mm'),
+        '18 equivalent labels use one offset': ok(
+            raw['label_distance'] == 0,
+            f"irregularity {raw['label_distance']}"),
+        '19 transformer reads as one object': (
+            ok(all(v <= 2.0 for v in raw['tx_ratio'].values()),
+               f"spread {raw['tx_ratio']}")
+            if raw['tx_ratio'] else ('N/A', 'no transformer')),
+        '20 master-library symbols reused undistorted': ok(
+            raw['custom_symbols'] == 0 and raw['symbol_distortion'] == 0,
+            f"{raw['library_symbols']} from the sheet, "
+            f"{raw['assembled_symbols']} assembled from it, "
+            f"{raw['symbol_distortion']} distorted"),
+        '21 local runs within 0.75-1.5 D': ok(
+            raw['length_band'] < 0.5, f"band penalty {raw['length_band']}"),
+        '22 output port only where the output is exposed': ok(
+            raw['redundant_annotation'] == 0,
+            _boundary_verdict(placed, notes)),
     }
+
+
+# ------------------------------------------------------------------ rule 12
+BAND_LO, BAND_HI = 0.75, 1.5     # acceptable local run length, in CELLs
+BAND_EPS = 1e-6                  # the band edges are inclusive
+
+
+def length_band(paths, placed=None, netlist=None):
+    """Component-to-component runs should sit within 0.75D..1.5D.
+
+    Item 12 is about the wire between two adjacent components, so this
+    measures the spacing of consecutive ports along each net's trunk -- not
+    the stub that drops from a port onto a rail, whose length is set by the
+    rail separation rather than by any local choice.  Control nets are
+    excluded: a gate stub is squeezed by the leg pitch.
+    """
+    if placed is None or netlist is None:
+        return 0.0, []
+    penalty, strays = 0.0, []
+    for net, members in netlist.nets.items():
+        if net not in paths:
+            continue
+        if any(port in CONTROL_PORTS for _, port in members):
+            continue
+        runs = [seg for seg in (s for pts in paths[net]
+                                for s in router.path_segments(pts))]
+        if not runs:
+            continue
+        trunk = max(runs, key=_length)
+        axis = 0 if abs(trunk[0][1] - trunk[1][1]) < TOL else 1
+        points = sorted(placed[r].port(p)[axis] for r, p in members
+                        if r in placed)
+        for a, b in zip(points, points[1:]):
+            gap = abs(b - a) / CELL
+            if gap < TOL / CELL or gap > LONG_RUN / CELL:
+                continue
+            if gap < BAND_LO - BAND_EPS:
+                penalty += ((BAND_LO - gap) / BAND_LO) ** 2
+                strays.append((net, round(gap, 2)))
+            elif gap > BAND_HI + BAND_EPS:
+                penalty += ((gap - BAND_HI) / BAND_HI) ** 2
+                strays.append((net, round(gap, 2)))
+    return round(penalty, 4), strays
+
+
+# ------------------------------------------------------------------ rule 15
+def label_distance_irregularity(placed, label_boxes, classes):
+    """Equivalent components must hold their labels at the same distance.
+
+    Also flags a label that sits closer to its body than the registry's
+    preferred offset, or much further away.
+    """
+    boxes = dict(label_boxes)
+    gaps = {}
+    for ref, part in placed.items():
+        box = boxes.get(ref)
+        if box is None:
+            continue
+        bx0, by0, bx1, by1 = part.bbox
+        lx0, ly0, lx1, ly1 = box
+        dx = max(bx0 - lx1, lx0 - bx1, 0.0)
+        dy = max(by0 - ly1, ly0 - by1, 0.0)
+        gaps[ref] = dx + dy
+
+    penalty, faults = 0.0, []
+    for cid, refs in sorted(classes.items()):
+        members = [r for r in refs if r in gaps]
+        if len(members) < 2:
+            continue
+        values = [gaps[r] for r in members]
+        spread = (max(values) - min(values)) / CELL
+        if spread > 0.05:
+            penalty += spread ** 2
+            faults.append(f'{cid}: label distances differ by '
+                          f'{spread:.2f} cells')
+    for ref, gap in gaps.items():
+        want = placed[ref].label_offset
+        drift = abs(gap - want) / CELL
+        if drift > 0.5:
+            penalty += drift ** 2
+            faults.append(f'{ref}: label {gap:.1f} mm from its body, '
+                          f'preferred {want:.1f} mm')
+    return round(penalty, 4), faults
+
+
+# ------------------------------------------------------------------ rule 16
+def external_markers(netlist, placed, paths=None):
+    """Boundary rings belong to main power interfaces, and to nothing else.
+
+    Also checks the geometry: the wire must stop at the circumference, not
+    run through the circle's interior.
+    """
+    faults = []
+    for ref, part in placed.items():
+        interface = getattr(part, 'interface', None)
+        marker = getattr(part, 'marker', None)
+
+        if interface == 'power' and marker is None:
+            faults.append(f'{ref} is a power interface but draws no marker')
+        if marker is not None and interface != 'power':
+            faults.append(f'{ref} draws a boundary marker but is '
+                          f'{interface or "an internal node"}')
+        if interface is not None and not part.spec.is_terminal:
+            faults.append(f'{ref} is marked an interface but is not a terminal')
+
+    # VIN / VOUT, when drawn as a port, must carry exactly one marker.  A
+    # converter fed from an explicit source has no external input boundary,
+    # and inventing one would change the netlist -- so that case is reported,
+    # not silently passed.
+    labels = {}
+    for ref, part in placed.items():
+        if part.label:
+            labels.setdefault(part.label, []).append(ref)
+    for want in ('VIN', 'VOUT'):
+        refs = labels.get(want, [])
+        if not refs:
+            continue
+        if len(refs) > 1:
+            faults.append(f'{want} appears on {len(refs)} components')
+        for ref in refs:
+            if getattr(placed[ref], 'interface', None) != 'power':
+                faults.append(f'{want} does not sit on a power interface')
+            elif getattr(placed[ref], 'marker', None) is None:
+                faults.append(f'{want} has no boundary marker')
+
+    if paths:
+        faults += marker_geometry(placed, paths)
+    return faults
+
+
+def marker_geometry(placed, paths):
+    """A wire may touch a boundary circle, never cross into it."""
+    faults = []
+    segs = [seg for _, seg in _segments(paths)]
+    for ref, part in placed.items():
+        marker = getattr(part, 'marker', None)
+        if marker is None:
+            continue
+        cx, cy, r = marker
+        port = part.port(next(iter(part.ports)))
+        # the wire's end sits on the circumference, one radius from the centre
+        offset = ((port[0] - cx) ** 2 + (port[1] - cy) ** 2) ** 0.5
+        if abs(offset - r) > TOL:
+            faults.append(f'{ref}: wire ends {offset:.3f} mm from the marker '
+                          f'centre, expected {r:.3f}')
+        for seg in segs:
+            depth = _penetration(seg, cx, cy, r)
+            if depth > TOL:
+                faults.append(f'{ref}: a wire crosses {depth:.3f} mm into '
+                              f'the boundary marker')
+                break
+    return faults
+
+
+def _penetration(seg, cx, cy, r):
+    """How far an axis-aligned segment reaches inside a circle."""
+    (x0, y0), (x1, y1) = seg
+    if abs(y0 - y1) < TOL:                      # horizontal
+        if abs(y0 - cy) > r - TOL:
+            return 0.0
+        half = (r * r - (y0 - cy) ** 2) ** 0.5
+        lo, hi = max(min(x0, x1), cx - half), min(max(x0, x1), cx + half)
+        return max(0.0, hi - lo)
+    if abs(x0 - x1) < TOL:                      # vertical
+        if abs(x0 - cx) > r - TOL:
+            return 0.0
+        half = (r * r - (x0 - cx) ** 2) ** 0.5
+        lo, hi = max(min(y0, y1), cy - half), min(max(y0, y1), cy + half)
+        return max(0.0, hi - lo)
+    return 0.0
+
+
+# ------------------------------------------------------------------ rule 17
+def transformer_spread(placed):
+    """A transformer's internal geometry is fixed and must stay that way."""
+    faults, ratios = [], {}
+    for ref, part in placed.items():
+        compound = part.spec.compound
+        if not compound or 'winding_span' not in compound:
+            continue
+        span = compound['winding_span']
+        ratio = part.spec.width / span
+        ratios[ref] = round(ratio, 3)
+        if ratio > 2.0:
+            faults.append(f'{ref}: symbol is {ratio:.2f}x its winding span; '
+                          f'the windings read as separate inductors')
+    return faults, ratios
+
+
+# ------------------------------------------------------------------ annotation
+INPUT_NAMES = {'vin', 'v_in'}
+OUTPUT_NAMES = {'vout', 'v_out'}
+NEAR = 3 * CELL              # two labels this close are "nearby"
+
+
+def _label_text(part):
+    return f'{part.label or ""}{part.sub or ""}'.lower()
+
+
+def redundant_annotation(placed, netlist, notes=()):
+    """Two nearby labels saying the same thing.
+
+    VIN and VOUT are semantic ideas, not mandatory ink.  An explicit source
+    already names the input; an output that ends in a load network already
+    shows what it is.  Saying it twice is what this catches.
+    """
+    faults = []
+
+    rendered = [(_label_text(p), p.x, p.y) for p in placed.values() if p.label]
+    for note in notes:
+        op = note['text_op']
+        rendered.append((f'{op["text"]}{op.get("sub") or ""}'.lower(),
+                         op['x'], op['y']))
+
+    # an input source plus a separate input annotation beside it
+    for part in placed.values():
+        if part.spec.role != 'source':
+            continue
+        for text, x, y in rendered:
+            if text not in INPUT_NAMES:
+                continue
+            if _label_text(part) in INPUT_NAMES:
+                continue                       # the source *is* the label
+            if abs(x - part.x) + abs(y - part.y) < NEAR:
+                faults.append(
+                    f'{part.ref} is labelled {_label_text(part)} and an '
+                    f'input annotation sits beside it; label the source '
+                    f'itself instead')
+
+    # the same text twice, close together
+    for i, (text, x, y) in enumerate(rendered):
+        for other, ox, oy in rendered[i + 1:]:
+            if text and text == other and abs(x - ox) + abs(y - oy) < NEAR:
+                faults.append(f'the label {text!r} is rendered twice nearby')
+
+    # an output terminal on a net that already terminates in a load
+    for ref, part in placed.items():
+        if not part.spec.is_terminal or _label_text(part) not in OUTPUT_NAMES:
+            continue
+        net = netlist.net_of(ref, 't')
+        if net is None:
+            continue
+        companions = [r for r, _ in netlist.nets[net] if r != ref]
+        roles = {placed[r].spec.role for r in companions if r in placed}
+        if 'load' in roles:
+            faults.append(
+                f'{ref}: the output already ends in a load network, so an '
+                f'output terminal adds nothing')
+    return faults
+
+
+def annotation_policy(placed, netlist, notes=()):
+    """How the input and output are named, for the review checklist."""
+    sources = [p for p in placed.values() if p.spec.role == 'source']
+    named_sources = [p for p in sources if _label_text(p) in INPUT_NAMES]
+    exposed = sorted(r for r, p in placed.items()
+                     if getattr(p, 'interface', None) == 'power')
+    bits = []
+    if named_sources:
+        bits.append(f'input: source {named_sources[0].ref} carries the name')
+    elif sources:
+        bits.append(f'input: source {sources[0].ref}, unnamed')
+    else:
+        bits.append('input: no explicit source')
+    bits.append('output: ' + (', '.join(exposed) + ' exposed' if exposed
+                              else 'ends at its load network, no port'))
+    return '; '.join(bits)
+
+
+# ------------------------------------------------------------------ symbols
+_ALLOWED_ROTATIONS = (0, 90, 180, 270, -90, -180, -270)
+
+
+def symbol_integrity(placed, registry):
+    """A placed symbol must keep the geometry the registry gave it.
+
+    Only translation, rotation and mirroring are allowed.  Any difference
+    between a part's drawn extent and its registry extent means something
+    stretched it, which would mean the drawing no longer matches the library.
+    """
+    faults = []
+    for ref, part in placed.items():
+        spec = registry.get(part.kind)
+        if spec is None:
+            faults.append(f'{ref}: {part.kind} is not in the registry')
+            continue
+        if part.rot % 360 not in [r % 360 for r in _ALLOWED_ROTATIONS]:
+            faults.append(f'{ref}: rotated {part.rot} deg, not a right angle')
+        drawn = (part.bbox[2] - part.bbox[0], part.bbox[3] - part.bbox[1])
+        if part.marker is not None:
+            continue            # the boundary ring extends the drawn extent
+        want = ((spec.width, spec.height) if part.rot % 180 == 0
+                else (spec.height, spec.width))
+        for got, expected, axis in zip(drawn, want, 'xy'):
+            if abs(got - expected) > TOL:
+                faults.append(
+                    f'{ref}: drawn {axis} extent {got:.3f} mm but the library '
+                    f'symbol is {expected:.3f} mm -- it has been scaled')
+    return faults
+
+
+def symbol_sources(placed, registry):
+    """Count how the drawing's symbols were obtained."""
+    tally = {'library': 0, 'compound': 0, 'custom': 0}
+    for kind in {p.kind for p in placed.values()}:
+        spec = registry.get(kind)
+        if spec is not None:
+            tally[spec.source] = tally.get(spec.source, 0) + 1
+    return tally

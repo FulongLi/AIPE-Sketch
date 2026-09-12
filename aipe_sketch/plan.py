@@ -13,7 +13,7 @@ CELL = 4                 # one component dimension, in grid units
 CLEARANCE = CELL         # preferred gap between neighbouring bodies
 PITCH = 2 * CELL         # centre-to-centre for adjacent components
 GROUP_PITCH = 10         # centre-to-centre across a functional boundary
-ANCHOR_PITCH = 9         # around a visually dense anchor such as a transformer
+ANCHOR_PITCH = 8         # around a visually dense anchor such as a transformer
 
 # Named rows.  A leg spans dc_pos..dc_neg, the two devices are one component
 # dimension apart, and the switching node sits exactly between them.
@@ -58,13 +58,13 @@ class Item:
 
     __slots__ = ('ref', 'row', 'rot', 'mirror', 'label_side', 'dx', 'dy')
 
-    def __init__(self, ref, row, rot=0, mirror=False, label_side='right',
+    def __init__(self, ref, row, rot=0, mirror=False, label_side=None,
                  dx=0, dy=0):
         self.ref = ref
         self.row = row
         self.rot = rot
         self.mirror = mirror
-        self.label_side = label_side
+        self.label_side = label_side      # None -> the registry's preference
         self.dx = dx
         self.dy = dy
 

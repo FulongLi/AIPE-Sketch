@@ -33,10 +33,17 @@ WEIGHTS = {
     'clearance': 200,
     'rhythm': 250,
     'local_spread': 250,
+    'length_band': 200,
+    'label_distance': 400,
+    'external_marker': 40000,
+    'transformer_spread': 20000,
+    'redundant_annotation': 2000,
+    'symbol_distortion': 60000,
 }
 
 FATAL = ('connectivity', 'component_overlap', 'wire_component_collision',
-         'label_overlap', 'out_of_bounds', 'rail_step', 'floating_end')
+         'label_overlap', 'out_of_bounds', 'rail_step', 'floating_end',
+         'external_marker', 'transformer_spread', 'symbol_distortion')
 
 SPACING = dict(minimum=3 * G, target_lo=4 * G, target_hi=6 * G,
                group_lo=6 * G, group_hi=10 * G)
@@ -69,7 +76,8 @@ class Scorecard:
         weights = {'connectivity': 3, 'symmetry': 2, 'spacing_uniformity': 2,
                    'alignment': 2, 'routing': 1, 'crossings': 1,
                    'collision': 3, 'topology_readability': 1,
-                   'visual_rhythm': 2, 'clearance': 2, 'conventions': 2}
+                   'visual_rhythm': 2, 'clearance': 2, 'conventions': 2,
+                   'labelling': 2}
         total = sum(weights.values())
         return round(sum(self.sub[k] * w for k, w in weights.items()) / total)
 
@@ -78,7 +86,10 @@ class Scorecard:
         return (self.sub['connectivity'] == 100 and
                 self.sub['collision'] == 100 and
                 not self.raw.get('rail_step') and
-                not self.raw.get('floating_end'))
+                not self.raw.get('floating_end') and
+                not self.raw.get('external_marker') and
+                not self.raw.get('transformer_spread') and
+                not self.raw.get('symbol_distortion'))
 
     def as_dict(self):
         out = dict(self.sub)
@@ -90,7 +101,7 @@ class Scorecard:
         for key in ('connectivity', 'symmetry', 'spacing_uniformity',
                     'alignment', 'routing', 'crossings', 'collision',
                     'topology_readability', 'visual_rhythm', 'clearance',
-                    'conventions'):
+                    'labelling', 'conventions'):
             lines.append(f'  {key:<22} {self.sub[key]:>3}')
         lines.append(f'  {"overall":<22} {self.overall:>3}')
         if self.faults:
@@ -105,7 +116,7 @@ def _clamp(value):
 
 def evaluate(netlist, placed, paths, labels, classes, bounds=None,
              connectivity_faults=None, structure=None, plan_groups=(),
-             notes=()):
+             notes=(), registry=None):
     raw, faults = {}, []
     parts = list(placed.values())
     bodies = [p for p in parts if p.spec.width > TOL or p.spec.height > TOL]
@@ -273,6 +284,46 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     raw['label_side'] = len(side_faults)
     faults += side_faults
 
+    raw['length_band'], strays = drawing_rules.length_band(
+        paths, placed, netlist)
+    for net, gap in strays[:4]:
+        faults.append(f'net {net}: a {gap} cell run between adjacent '
+                      f'components is outside the 0.75-1.5 band')
+    raw['label_distance'], label_faults = \
+        drawing_rules.label_distance_irregularity(placed, labels, classes)
+    faults += label_faults
+
+    redundant = drawing_rules.redundant_annotation(placed, netlist, notes)
+    raw['redundant_annotation'] = len(redundant)
+    faults += redundant
+
+    marker_faults = drawing_rules.external_markers(netlist, placed, paths)
+    raw['marker_count'] = sum(1 for p in parts
+                              if getattr(p, 'marker', None))
+    raw['external_marker'] = len(marker_faults)
+    faults += marker_faults
+
+    # how much of the drawing comes from the master sheet, and whether any
+    # symbol was distorted on the way in
+    seen = {p.spec.kind: p.spec for p in parts}
+    raw['library_symbols'] = sum(1 for s in seen.values()
+                                 if s.source == 'library')
+    raw['assembled_symbols'] = sum(1 for s in seen.values()
+                                   if s.source == 'compound')
+    raw['custom_symbols'] = sum(1 for s in seen.values()
+                                if s.source == 'custom'
+                                and s.role != 'terminal')
+    if registry is not None:
+        distorted = drawing_rules.symbol_integrity(placed, registry)
+        raw['symbol_distortion'] = len(distorted)
+        faults += distorted
+    else:
+        raw['symbol_distortion'] = 0
+
+    tx_faults, raw['tx_ratio'] = drawing_rules.transformer_spread(placed)
+    raw['transformer_spread'] = len(tx_faults)
+    faults += tx_faults
+
     raw['fill'], raw['aspect'] = drawing_rules.compactness(solid, paths)
     raw['largest_void'] = drawing_rules.occupancy(solid, paths)
     for ref, lo, hi in uneven[:6]:
@@ -305,7 +356,11 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
             100 - raw['spacing_target'] / (8 * nparts)
             - 40 * raw['crossing'] / max(1, nparts)),
         'visual_rhythm': _clamp(100 - 30 * raw['rhythm']
-                                - 30 * raw['local_spread'] / nb),
+                                - 30 * raw['local_spread'] / nb
+                                - 25 * raw['length_band'] / nb),
+        'labelling': _clamp(100 - 25 * raw['label_distance']
+                            - 50 * raw['label_side']
+                            - 25 * raw['redundant_annotation']),
         'clearance': _clamp(100 - 35 * raw['clearance'] / nb
                             - 10 * raw['clearance_tight']),
         'conventions': _clamp(100 - 30 * raw['rail_step']

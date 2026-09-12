@@ -1,77 +1,86 @@
-"""Component metadata: geometry, ports and semantic role.
+"""Symbol registry: the single programmatic view of the master symbol sheet.
 
-Simple parts wrap one <symbol> from the master sheet (see pins.py).
-Compound parts are assembled from several symbols plus primitive strokes,
-which is how reusable structures like a transformer are built.
+    Inkscape_Symbols_All.svg  ->  symlib parser  ->  Registry
+                                                      |
+                                +---------------------+---------------------+
+                                |                     |                     |
+                            renderer        placement metadata        pin geometry
+
+The master SVG stays authoritative.  Nothing here redraws a symbol that the
+sheet already provides; custom geometry appears only where the sheet's own
+symbol is unusable, and then it is assembled from other library symbols.
 """
 from .pins import PARTS as SYMBOL_PARTS, H, COARSE as G
 
-# ------------------------------------------------------------------ compounds
-# A transformer is not usable from the sheet: its <symbol> wrappers enclose
-# geometry scattered across the whole drawing.  It is composed here from the
-# library's own coil so the strokes still match the house style.
 TERMINAL_R = 0.6             # open-circle radius for an external port, mm
-SOURCE_R = 1.0 * G           # the source symbol's circle radius
 
+# Where a symbol's geometry comes from.  Lookup priority is library first,
+# then a compound assembled from library primitives, and only then custom
+# geometry -- so nothing standard is ever redrawn by hand.
+LIBRARY = 'library'          # one <symbol> instantiated from the master sheet
+COMPOUND_SRC = 'compound'    # assembled from library symbols plus primitives
+CUSTOM = 'custom'            # drawn here because the sheet offers nothing
+
+# ------------------------------------------------------------------ transformer
+# The sheet's transformer <symbol> wrappers enclose geometry scattered across
+# the whole drawing, so they cannot be instantiated.  It is assembled instead
+# from the library's own coil, using the proportions measured off the sheet's
+# own transformer: two core bars 1.325 mm apart spanning the full symbol
+# height, with the windings hard against them.
 _COIL_BULGE = 1.058          # the coil symbol bulges this far off its axis
-_WIND_X = 2 * G              # winding axis offset from the device centre
-_CORE_X = 0.25 * G           # core bar offset from the device centre
-_CORE_Y = 1.5 * G
+_CORE_X = 0.6625             # core bar offset from centre (1.325 mm apart)
+_WIND_X = 0.75 * G           # winding axis offset -- coil edge meets the core
+_LEAD = 1.0 * G              # straight terminal entry segment, per port
+_TX_HALF = _WIND_X + _LEAD
 
 COMPOUND = {
-    # A named connection point.  It draws nothing but a label, and exists so
-    # that every net ends on a real component port -- which is what lets the
-    # rendered drawing be checked against the netlist in full.
-    # An external port: an open circle centred exactly on the wire end, so a
-    # port never looks like an unfinished line and never like a junction dot.
+    # An external interface point.  It draws nothing but an open circle, and
+    # exists so a net that leaves the schematic ends somewhere explicit.
     'terminal': dict(role='terminal', symbols=[], strokes=[],
                      circles=[(0.0, 0.0, TERMINAL_R)],
                      ports={'t': (0.0, 0.0)},
-                     bbox=(-TERMINAL_R, -TERMINAL_R, TERMINAL_R, TERMINAL_R)),
+                     bbox=(-TERMINAL_R, -TERMINAL_R, TERMINAL_R, TERMINAL_R),
+                     source=CUSTOM,
+                     reason='the sheet has no open-circle interface marker; '
+                            'its only lone circles are filled GND glyphs'),
 
     'transformer': dict(
         role='isolation',
         # (symbol kind, dx, dy, rot, mirror) in millimetres from the centre
         symbols=[('ind', -_WIND_X, 0, 0, False),
                  ('ind', _WIND_X, 0, 0, True)],
-        strokes=[((-_CORE_X, -_CORE_Y), (-_CORE_X, _CORE_Y)),
-                 ((_CORE_X, -_CORE_Y), (_CORE_X, _CORE_Y))],
-        ports={'p1': (-_WIND_X, -H), 'p2': (-_WIND_X, H),
-               's1': (_WIND_X, -H), 's2': (_WIND_X, H)},
-        bbox=(-_WIND_X - _COIL_BULGE, -H, _WIND_X + _COIL_BULGE, H),
+        strokes=[((-_CORE_X, -H), (-_CORE_X, H)),
+                 ((_CORE_X, -H), (_CORE_X, H)),
+                 # short straight entry segment at each port
+                 ((-_WIND_X, -H), (-_TX_HALF, -H)),
+                 ((-_WIND_X, H), (-_TX_HALF, H)),
+                 ((_WIND_X, -H), (_TX_HALF, -H)),
+                 ((_WIND_X, H), (_TX_HALF, H))],
+        ports={'p1': (-_TX_HALF, -H), 'p2': (-_TX_HALF, H),
+               's1': (_TX_HALF, -H), 's2': (_TX_HALF, H)},
+        bbox=(-_TX_HALF, -H, _TX_HALF, H),
+        winding_span=2 * (_WIND_X + _COIL_BULGE),
+        source=COMPOUND_SRC,
+        reason='every transformer <symbol> on the sheet encloses geometry '
+               'scattered across the whole drawing and cannot be '
+               'instantiated; assembled from the library coil instead',
     ),
 }
 
 # ------------------------------------------------------------------ decoration
-# Marks drawn on top of a symbol from the sheet.  The sheet's plain source
-# circle carries no polarity and no current arrow, and conventional practice
-# requires both.
-_ARROW_H = 0.55              # half-width of the current arrow head
+# Marks drawn over a library symbol.  The sheet's plain source circle carries
+# neither polarity nor direction, and conventional practice requires both.
+_ARROW_H = 0.55
 
 DECOR = {
-    # polarity inside the circle, positive toward the positive terminal
     'vsource': dict(texts=[(0.0, -0.55, '+', 2.5),
-                           (0.0, 2.15, '\u2212', 2.5)]),
-
-    # an arrow from the current-entry terminal toward the current-exit one
+                           (0.0, 2.15, '−', 2.5)]),
     'isource': dict(strokes=[((0.0, 1.6), (0.0, -1.6)),
                              ((-_ARROW_H, -0.85), (0.0, -1.6)),
                              ((_ARROW_H, -0.85), (0.0, -1.6))]),
 }
 
-
-# ------------------------------------------------------------------ sides
-_SIDE_ORDER = ('top', 'bottom', 'left', 'right')
-
-
-def _side_of(offset):
-    dx, dy = offset
-    if abs(dy) >= abs(dx):
-        return 'top' if dy < 0 else 'bottom'
-    return 'left' if dx < 0 else 'right'
-
-
-# semantic roles, used for functional grouping and layout conventions
+# ------------------------------------------------------------------ roles
 ROLES = {
     'nmos': 'power_switch', 'nmos_don': 'power_switch', 'igbt': 'power_switch',
     'diode': 'rectifier',
@@ -83,9 +92,11 @@ ROLES = {
     'terminal': 'terminal',
 }
 
-# Ports that are electrically interchangeable.  Colour refinement must not
-# treat the two ends of a resistor as different, or two otherwise identical
-# bridge legs stop looking identical.
+ORIENTATION = {k: 'vertical' for k in ROLES}
+ORIENTATION['transformer'] = 'vertical'
+
+# Ports that are electrically interchangeable, so colour refinement does not
+# treat two otherwise identical structures as different.
 SYMMETRIC_PORTS = {
     'res': {'a': '*', 'b': '*'},
     'cap': {'a': '*', 'b': '*'},
@@ -99,20 +110,66 @@ def canonical_port(kind, port):
     return SYMMETRIC_PORTS.get(kind, {}).get(port, port)
 
 
-ORIENTATION = {k: 'vertical' for k in ROLES}
-ORIENTATION['transformer'] = 'vertical'
+# ------------------------------------------------------------------ labels
+# Preferred label side and offset per role.  Equivalent components share
+# these, so their labels sit at identical distances.
+LABEL_STYLE = {
+    'power_switch': dict(side='right', offset=1.3),
+    'rectifier':    dict(side='right', offset=1.3),
+    # a horizontal inductor is thin, so its label must clear its own wire
+    'magnetic':     dict(side='above', offset=2.2),
+    'isolation':    dict(side='above', offset=1.6),
+    'filter':       dict(side='left',  offset=1.3),
+    'load':         dict(side='right', offset=1.3),
+    'source':       dict(side='left',  offset=1.6),
+    'reference':    dict(side='below', offset=1.0),
+    'terminal':     dict(side='right', offset=1.4),
+    'generic':      dict(side='right', offset=1.3),
+}
+
+# Keep-out beyond the drawn body, per role, in grid units.  The raw bounding
+# box is not always the right spacing boundary: a transformer is visually
+# dense, a switch needs room on its gate side, a terminal needs almost none.
+VISUAL_MARGIN = {
+    'isolation':    dict(top=1.0, bottom=1.0, left=1.25, right=1.25),
+    'power_switch': dict(top=1.0, bottom=1.0, left=1.25, right=1.0),
+    'source':       dict(top=1.0, bottom=1.0, left=1.25, right=1.0),
+    'terminal':     dict(top=0.25, bottom=0.25, left=0.25, right=0.25),
+    'reference':    dict(top=0.25, bottom=0.5, left=0.5, right=0.5),
+    'generic':      dict(top=1.0, bottom=1.0, left=1.0, right=1.0),
+}
+
+# Callers may request a component by its plain engineering name.
+ALIASES = {
+    'capacitor': 'cap', 'polarised_capacitor': 'cap_pol',
+    'resistor': 'res', 'inductor': 'ind', 'cored_inductor': 'ind_core',
+    'voltage_source': 'vsource', 'current_source': 'isource',
+    'mosfet': 'nmos', 'n_mosfet': 'nmos', 'ground': 'gnd',
+    'switch': 'nmos', 'rectifier': 'diode',
+}
+
+_SIDE_ORDER = ('top', 'bottom', 'left', 'right')
 
 
-class PartSpec:
-    """Everything the placer and router need to know about a component kind."""
+def _side_of(offset):
+    dx, dy = offset
+    if abs(dy) >= abs(dx):
+        return 'top' if dy < 0 else 'bottom'
+    return 'left' if dx < 0 else 'right'
 
-    def __init__(self, kind, ports, bbox, role, compound=None, symbol=None):
+
+class SymbolSpec:
+    """Everything the placer, router and renderer need about one kind."""
+
+    def __init__(self, kind, symbol_id, ports, bbox, role, compound=None,
+                 default_rotation=0):
         self.kind = kind
-        self.ports = ports                      # {name: (dx, dy)} from anchor
-        self.bbox = bbox                        # (x0, y0, x1, y1) from anchor
+        self.symbol_id = symbol_id
+        self.default_rotation = default_rotation
+        self.ports = ports                  # {name: (dx, dy)} from the anchor
+        self.bbox = bbox                    # (x0, y0, x1, y1) from the anchor
         self.role = role
-        self.compound = compound                # sub-symbols, if assembled
-        self.symbol = symbol                    # base symbol kind, if simple
+        self.compound = compound
         self.sides = {p: _side_of(o) for p, o in ports.items()}
         decor = dict(DECOR.get(kind, {}))
         if compound:
@@ -120,11 +177,18 @@ class PartSpec:
                 if compound.get(key):
                     decor.setdefault(key, []).extend(compound[key])
         self.decor = decor
+        if compound:
+            self.source = compound.get('source', COMPOUND_SRC)
+            self.reason = compound.get('reason', '')
+        else:
+            self.source = LIBRARY
+            self.reason = DECOR.get(kind, {}).get('reason', '')
+        style = LABEL_STYLE.get(role, LABEL_STYLE['generic'])
+        self.label_side = style['side']
+        self.label_offset = style['offset']
+        self.visual_margin = VISUAL_MARGIN.get(role, VISUAL_MARGIN['generic'])
 
-    @property
-    def is_terminal(self):
-        return self.role == 'terminal'
-
+    # -- geometry ----------------------------------------------------
     @property
     def width(self):
         return self.bbox[2] - self.bbox[0]
@@ -137,38 +201,114 @@ class PartSpec:
     def orientation(self):
         return ORIENTATION.get(self.kind, 'vertical')
 
-    def port_side(self, port):
-        return self.sides[port]
+    @property
+    def is_terminal(self):
+        return self.role == 'terminal'
+
+    @property
+    def decorated(self):
+        """True when marks are added over a library symbol."""
+        return bool(DECOR.get(self.kind))
+
+    @property
+    def provenance(self):
+        """One line naming where this symbol's geometry comes from."""
+        if self.source == LIBRARY:
+            text = f'{LIBRARY} {self.symbol_id}'
+            if self.decorated:
+                text += ' + marks'
+            return text
+        if self.source == COMPOUND_SRC:
+            parts = ', '.join(sub for sub, *_ in self.compound['symbols'])
+            return f'{COMPOUND_SRC} of {parts}'
+        return CUSTOM
+
+    def margin_box(self, bbox=None):
+        """The body box grown by this symbol's own keep-out."""
+        x0, y0, x1, y1 = bbox or self.bbox
+        m = self.visual_margin
+        return (x0 - m['left'] * G, y0 - m['top'] * G,
+                x1 + m['right'] * G, y1 + m['bottom'] * G)
 
     def as_dict(self):
         return {
-            'id': self.kind,
-            'type': self.kind,
-            'width': round(self.width, 3),
-            'height': round(self.height, 3),
-            'ports': {p: {'preferred_side': s} for p, s in self.sides.items()},
+            'kind': self.kind,
+            'symbol_id': self.symbol_id,
+            'bbox': [round(v, 3) for v in self.bbox],
+            'anchor': [0.0, 0.0],
+            'ports': {p: {'offset': [round(v, 3) for v in o],
+                          'preferred_side': self.sides[p]}
+                      for p, o in self.ports.items()},
             'preferred_orientation': self.orientation,
             'semantic_role': self.role,
+            'visual_margin': self.visual_margin,
+            'preferred_label_side': self.label_side,
+            'preferred_label_offset': self.label_offset,
+            'default_rotation': self.default_rotation,
+            'symbol_source': self.source,
+            'provenance': self.provenance,
+            'reason': self.reason,
         }
 
 
+class Registry:
+    """The programmatic view of the symbol sheet."""
+
+    def __init__(self, symbols):
+        self.symbols = symbols
+        self._specs = {}
+        for kind, entry in SYMBOL_PARTS.items():
+            sym = symbols[entry['sym']]
+            ax, ay = entry['anchor']
+            x0, y0, x1, y1 = sym.bbox
+            self._specs[kind] = SymbolSpec(
+                kind, entry['sym'], dict(entry['pins']),
+                (x0 - ax, y0 - ay, x1 - ax, y1 - ay),
+                ROLES.get(kind, 'generic'))
+        for kind, entry in COMPOUND.items():
+            self._specs[kind] = SymbolSpec(
+                kind, None, dict(entry['ports']), entry['bbox'],
+                entry.get('role', 'generic'), compound=entry)
+
+    def __getitem__(self, kind):
+        return self._specs[ALIASES.get(kind, kind)]
+
+    def get(self, kind, default=None):
+        """Fetch by semantic name; plain engineering names are accepted."""
+        return self._specs.get(ALIASES.get(kind, kind), default)
+
+    def __contains__(self, kind):
+        return ALIASES.get(kind, kind) in self._specs
+
+    def __iter__(self):
+        return iter(self._specs)
+
+    def items(self):
+        return self._specs.items()
+
+    def port_table(self):
+        return {k: sorted(s.ports) for k, s in self._specs.items()}
+
+    def as_dict(self):
+        return {k: s.as_dict() for k, s in sorted(self._specs.items())}
+
+    def audit(self):
+        """One row per kind: where its geometry comes from."""
+        rows = []
+        for kind, spec in sorted(self._specs.items()):
+            rows.append(dict(kind=kind, source=spec.source,
+                             symbol_id=spec.symbol_id or '',
+                             provenance=spec.provenance,
+                             ports=sorted(spec.ports),
+                             bbox=[round(v, 3) for v in spec.bbox],
+                             reason=spec.reason))
+        return rows
+
+
 def build_specs(symbols):
-    """Build the part table.  `symbols` is the loaded symbol library."""
-    specs = {}
-    for kind, entry in SYMBOL_PARTS.items():
-        sym = symbols[entry['sym']]
-        ax, ay = entry['anchor']
-        x0, y0, x1, y1 = sym.bbox
-        specs[kind] = PartSpec(
-            kind, dict(entry['pins']),
-            (x0 - ax, y0 - ay, x1 - ax, y1 - ay),
-            ROLES.get(kind, 'generic'), symbol=kind)
-    for kind, entry in COMPOUND.items():
-        specs[kind] = PartSpec(kind, dict(entry['ports']), entry['bbox'],
-                               entry.get('role', 'generic'), compound=entry)
-    return specs
+    """Backwards-compatible accessor returning the registry."""
+    return Registry(symbols)
 
 
 def port_table(symbols):
-    """{kind: [port names]} -- used by Netlist.validate."""
-    return {k: sorted(s.ports) for k, s in build_specs(symbols).items()}
+    return Registry(symbols).port_table()

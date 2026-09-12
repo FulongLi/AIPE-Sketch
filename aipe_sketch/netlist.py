@@ -8,17 +8,34 @@ from collections import defaultdict
 
 
 class Component:
-    __slots__ = ('ref', 'kind', 'role', 'label', 'sub', 'italic', 'attrs')
+    __slots__ = ('ref', 'kind', 'role', 'label', 'sub', 'italic', 'interface',
+                 'attrs')
 
     def __init__(self, ref, kind, role=None, label=None, sub=None,
-                 italic=True, **attrs):
+                 italic=True, interface=None, **attrs):
         self.ref = ref
         self.kind = kind
         self.role = role
         self.label = label
         self.sub = sub
         self.italic = italic        # signal names are upright, quantities slant
+        # 'power'   a main power-side interface: VIN, VOUT, a phase output.
+        #           These carry the open-circle boundary marker.
+        # 'control' a gate drive or sensing port.  Still an interface, still a
+        #           real component so connectivity stays checkable, but drawn
+        #           as an ordinary wire endpoint with no marker.
+        # None      not an interface at all.
+        # Never inferred from the fact that a wire happens to end here.
+        self.interface = interface
         self.attrs = attrs
+
+    @property
+    def external(self):
+        return self.interface is not None
+
+    @property
+    def marks_boundary(self):
+        return self.interface == 'power'
 
     def __repr__(self):
         return f'Component({self.ref!r}, {self.kind!r})'
@@ -35,10 +52,12 @@ class Netlist:
 
     # ---------------------------------------------------------------- build
     def add(self, ref, kind, role=None, label=None, sub=None, italic=True,
-            **attrs):
+            interface=None, **attrs):
         if ref in self.components:
             raise ValueError(f'duplicate component {ref}')
-        c = Component(ref, kind, role, label, sub, italic, **attrs)
+        if interface not in (None, 'power', 'control'):
+            raise ValueError(f'{ref}: interface must be power, control or None')
+        c = Component(ref, kind, role, label, sub, italic, interface, **attrs)
         self.components[ref] = c
         self.order.append(c)
         return c
@@ -119,6 +138,15 @@ class Netlist:
         for net, members in self._nets.items():
             if len(members) < 2:
                 problems.append(f'net {net}: only {len(members)} terminal')
+        for ref, c in self.components.items():
+            if c.kind == 'terminal' and not c.external:
+                problems.append(
+                    f'{ref}: a terminal must declare interface="power" or '
+                    f'"control"; an internal node should connect straight to '
+                    f'a component')
+            if c.external and c.kind != 'terminal':
+                problems.append(
+                    f'{ref}: only a terminal may be an external interface')
         return problems
 
     def __repr__(self):

@@ -21,7 +21,8 @@ def build(name, out_dir=None):
     sch.trunks.update(opts.get('trunks', {}))
     sch.route()
     for ref, row, dx, dy, text, sub in opts.get('notes', ()):
-        sch.note(ref, row, text, sub=sub, dx=dx, dy=dy, anchor='start')
+        sch.note(ref, row, text, sub=sub, dx=dx, dy=dy,
+                 anchor='start', italic=False)
     out = os.path.join(out_dir or os.path.join(ROOT, 'out'), f'{name}.svg')
     card, log = sch.render(out)
     return sch, card, log, out

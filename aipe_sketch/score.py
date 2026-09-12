@@ -5,7 +5,7 @@ repeated structure uniform scores better than a shorter irregular one.
 """
 from statistics import mean, pstdev
 
-from . import router
+from . import drawing_rules, router
 from .router import TOL
 from .pins import COARSE as G
 from .placement import cluster
@@ -25,10 +25,18 @@ WEIGHTS = {
     'spacing_target': 120,
     'bend': 60,
     'wire_length': 1,
+    # general drawing rules
+    'rail_step': 40000,
+    'floating_end': 40000,
+    'midpoint_detour': 5000,
+    'label_side': 3000,
+    'clearance': 200,
+    'rhythm': 250,
+    'local_spread': 250,
 }
 
 FATAL = ('connectivity', 'component_overlap', 'wire_component_collision',
-         'label_overlap', 'out_of_bounds')
+         'label_overlap', 'out_of_bounds', 'rail_step', 'floating_end')
 
 SPACING = dict(minimum=3 * G, target_lo=4 * G, target_hi=6 * G,
                group_lo=6 * G, group_hi=10 * G)
@@ -49,23 +57,28 @@ def _gap(r1, r2):
 
 
 class Scorecard:
-    def __init__(self, raw, faults, sub, cost):
+    def __init__(self, raw, faults, sub, cost, checks=None):
         self.raw = raw
         self.faults = faults
         self.sub = sub
         self.cost = cost
+        self.checks = checks or {}
 
     @property
     def overall(self):
         weights = {'connectivity': 3, 'symmetry': 2, 'spacing_uniformity': 2,
                    'alignment': 2, 'routing': 1, 'crossings': 1,
-                   'collision': 3, 'topology_readability': 1}
+                   'collision': 3, 'topology_readability': 1,
+                   'visual_rhythm': 2, 'clearance': 2, 'conventions': 2}
         total = sum(weights.values())
         return round(sum(self.sub[k] * w for k, w in weights.items()) / total)
 
     @property
     def acceptable(self):
-        return self.sub['connectivity'] == 100 and self.sub['collision'] == 100
+        return (self.sub['connectivity'] == 100 and
+                self.sub['collision'] == 100 and
+                not self.raw.get('rail_step') and
+                not self.raw.get('floating_end'))
 
     def as_dict(self):
         out = dict(self.sub)
@@ -76,7 +89,8 @@ class Scorecard:
         lines = [f'quality  (cost {self.cost:,.0f})']
         for key in ('connectivity', 'symmetry', 'spacing_uniformity',
                     'alignment', 'routing', 'crossings', 'collision',
-                    'topology_readability'):
+                    'topology_readability', 'visual_rhythm', 'clearance',
+                    'conventions'):
             lines.append(f'  {key:<22} {self.sub[key]:>3}')
         lines.append(f'  {"overall":<22} {self.overall:>3}')
         if self.faults:
@@ -90,10 +104,14 @@ def _clamp(value):
 
 
 def evaluate(netlist, placed, paths, labels, classes, bounds=None,
-             connectivity_faults=None):
+             connectivity_faults=None, structure=None, plan_groups=(),
+             notes=()):
     raw, faults = {}, []
     parts = list(placed.values())
     bodies = [p for p in parts if p.spec.width > TOL or p.spec.height > TOL]
+    # an external terminal's ring sits on the wire end by design, so it is a
+    # body for label and overlap purposes but never a routing obstacle
+    solid = [p for p in bodies if not p.spec.is_terminal]
 
     # -- connectivity ------------------------------------------------
     cfaults = list(connectivity_faults or [])
@@ -130,7 +148,7 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     for net, net_paths in paths.items():
         for pts in net_paths:
             for seg in router.path_segments(pts):
-                for part in bodies:
+                for part in solid:
                     if router.seg_penetrates(seg, part.bbox):
                         collisions += 1
                         faults.append(f'net {net} crosses body of {part.ref}')
@@ -144,6 +162,11 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
             if x0 < bx0 or y0 < by0 or x1 > bx1 or y1 > by1:
                 out += 1
                 faults.append(f'{part.ref} lies outside the drawing bounds')
+        for ref, box in labels:          # a clipped label is a lost label
+            if (box[0] < bx0 or box[1] < by0
+                    or box[2] > bx1 or box[3] > by1):
+                out += 1
+                faults.append(f'label {ref} lies outside the drawing bounds')
     raw['out_of_bounds'] = out
 
     # -- crossings, bends, length ------------------------------------
@@ -224,8 +247,42 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     raw['spacing_target'] = round(penalty, 3)
     raw['spacing_tight'] = tight
 
+    # -- general drawing rules ---------------------------------------
+    structure = structure or {}
+    raw['clearance'], tight_bodies = drawing_rules.clearance(solid)
+    raw['rhythm'], raw['scales'] = drawing_rules.rhythm(paths)
+    raw['local_spread'], uneven = drawing_rules.local_consistency(placed, paths)
+    raw['clearance_tight'] = tight_bodies
+
+    rails = [structure.get('rails', {}).get('positive'),
+             structure.get('rails', {}).get('negative')]
+    rail_faults = drawing_rules.rail_straightness(paths, rails)
+    raw['rail_step'] = len(rail_faults)
+    faults += rail_faults
+
+    mid_faults = drawing_rules.midpoint_directness(paths,
+                                                   structure.get('legs', []))
+    raw['midpoint_detour'] = len(mid_faults)
+    faults += mid_faults
+
+    loose = drawing_rules.floating_ends(placed, paths)
+    raw['floating_end'] = len(loose)
+    faults += loose
+
+    side_faults = drawing_rules.label_side_consistency(placed, classes)
+    raw['label_side'] = len(side_faults)
+    faults += side_faults
+
+    raw['fill'], raw['aspect'] = drawing_rules.compactness(solid, paths)
+    raw['largest_void'] = drawing_rules.occupancy(solid, paths)
+    for ref, lo, hi in uneven[:6]:
+        faults.append(f'{ref}: local wires differ by {hi - lo:.1f} cells '
+                      f'({lo} vs {hi})')
+
     # -- cost --------------------------------------------------------
-    cost = sum(WEIGHTS[k] * raw[k] for k in WEIGHTS if k in raw)
+    cost = sum(WEIGHTS[k] * raw[k] for k in WEIGHTS
+               if k in raw and isinstance(raw[k], (int, float)))
+    nb = max(1, len(solid))
 
     # -- 0..100 subscores --------------------------------------------
     nparts = max(1, len(bodies))
@@ -247,5 +304,15 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
         'topology_readability': _clamp(
             100 - raw['spacing_target'] / (8 * nparts)
             - 40 * raw['crossing'] / max(1, nparts)),
+        'visual_rhythm': _clamp(100 - 30 * raw['rhythm']
+                                - 30 * raw['local_spread'] / nb),
+        'clearance': _clamp(100 - 35 * raw['clearance'] / nb
+                            - 10 * raw['clearance_tight']),
+        'conventions': _clamp(100 - 30 * raw['rail_step']
+                              - 25 * raw['midpoint_detour']
+                              - 20 * raw['label_side']
+                              - 40 * raw['floating_end']),
     }
-    return Scorecard(raw, faults, sub, cost)
+    checks = drawing_rules.checklist(raw, netlist, placed, paths,
+                                     structure, plan_groups, notes)
+    return Scorecard(raw, faults, sub, cost, checks)

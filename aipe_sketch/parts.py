@@ -10,6 +10,9 @@ from .pins import PARTS as SYMBOL_PARTS, H, COARSE as G
 # A transformer is not usable from the sheet: its <symbol> wrappers enclose
 # geometry scattered across the whole drawing.  It is composed here from the
 # library's own coil so the strokes still match the house style.
+TERMINAL_R = 0.6             # open-circle radius for an external port, mm
+SOURCE_R = 1.0 * G           # the source symbol's circle radius
+
 _COIL_BULGE = 1.058          # the coil symbol bulges this far off its axis
 _WIND_X = 2 * G              # winding axis offset from the device centre
 _CORE_X = 0.25 * G           # core bar offset from the device centre
@@ -19,8 +22,12 @@ COMPOUND = {
     # A named connection point.  It draws nothing but a label, and exists so
     # that every net ends on a real component port -- which is what lets the
     # rendered drawing be checked against the netlist in full.
+    # An external port: an open circle centred exactly on the wire end, so a
+    # port never looks like an unfinished line and never like a junction dot.
     'terminal': dict(role='terminal', symbols=[], strokes=[],
-                     ports={'t': (0.0, 0.0)}, bbox=(0.0, 0.0, 0.0, 0.0)),
+                     circles=[(0.0, 0.0, TERMINAL_R)],
+                     ports={'t': (0.0, 0.0)},
+                     bbox=(-TERMINAL_R, -TERMINAL_R, TERMINAL_R, TERMINAL_R)),
 
     'transformer': dict(
         role='isolation',
@@ -34,6 +41,24 @@ COMPOUND = {
         bbox=(-_WIND_X - _COIL_BULGE, -H, _WIND_X + _COIL_BULGE, H),
     ),
 }
+
+# ------------------------------------------------------------------ decoration
+# Marks drawn on top of a symbol from the sheet.  The sheet's plain source
+# circle carries no polarity and no current arrow, and conventional practice
+# requires both.
+_ARROW_H = 0.55              # half-width of the current arrow head
+
+DECOR = {
+    # polarity inside the circle, positive toward the positive terminal
+    'vsource': dict(texts=[(0.0, -0.55, '+', 2.5),
+                           (0.0, 2.15, '\u2212', 2.5)]),
+
+    # an arrow from the current-entry terminal toward the current-exit one
+    'isource': dict(strokes=[((0.0, 1.6), (0.0, -1.6)),
+                             ((-_ARROW_H, -0.85), (0.0, -1.6)),
+                             ((_ARROW_H, -0.85), (0.0, -1.6))]),
+}
+
 
 # ------------------------------------------------------------------ sides
 _SIDE_ORDER = ('top', 'bottom', 'left', 'right')
@@ -81,13 +106,24 @@ ORIENTATION['transformer'] = 'vertical'
 class PartSpec:
     """Everything the placer and router need to know about a component kind."""
 
-    def __init__(self, kind, ports, bbox, role, compound=None):
+    def __init__(self, kind, ports, bbox, role, compound=None, symbol=None):
         self.kind = kind
         self.ports = ports                      # {name: (dx, dy)} from anchor
         self.bbox = bbox                        # (x0, y0, x1, y1) from anchor
         self.role = role
-        self.compound = compound
+        self.compound = compound                # sub-symbols, if assembled
+        self.symbol = symbol                    # base symbol kind, if simple
         self.sides = {p: _side_of(o) for p, o in ports.items()}
+        decor = dict(DECOR.get(kind, {}))
+        if compound:
+            for key in ('strokes', 'texts', 'circles'):
+                if compound.get(key):
+                    decor.setdefault(key, []).extend(compound[key])
+        self.decor = decor
+
+    @property
+    def is_terminal(self):
+        return self.role == 'terminal'
 
     @property
     def width(self):
@@ -126,7 +162,7 @@ def build_specs(symbols):
         specs[kind] = PartSpec(
             kind, dict(entry['pins']),
             (x0 - ax, y0 - ay, x1 - ax, y1 - ay),
-            ROLES.get(kind, 'generic'))
+            ROLES.get(kind, 'generic'), symbol=kind)
     for kind, entry in COMPOUND.items():
         specs[kind] = PartSpec(kind, dict(entry['ports']), entry['bbox'],
                                entry.get('role', 'generic'), compound=entry)

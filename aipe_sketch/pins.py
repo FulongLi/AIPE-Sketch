@@ -24,7 +24,8 @@ PARTS = {
     # --- sources -----------------------------------------------------
     'vsource':  dict(sym='g11181', anchor=(60.854, 78.7185),
                      pins={'p': (0, -H), 'n': (0, H)}),
-    'isource':  dict(sym='g6663',  anchor=(31.618, 44.323),
+    # the plain source circle; direction comes from the arrow in parts.DECOR
+    'isource':  dict(sym='g11181', anchor=(60.854, 78.7185),
                      pins={'p': (0, -H), 'n': (0, H)}),
     'battery':  dict(sym='g5754',  anchor=(144.198, 61.521),
                      pins={'p': (0, -2.646), 'n': (0, 2.646)}),

@@ -58,6 +58,25 @@ def _bbox_after(bbox, rot, mirror, x, y):
     return (min(xs), min(ys), max(xs), max(ys))
 
 
+def _natural_pitch(group, netlist, specs, opts):
+    """Cell width for a group: its widest body plus one component dimension.
+
+    Deriving it from the group's own contents keeps narrow passives close
+    together while leaving switching devices a full cell apart, and because
+    every slot of a repeated structure holds the same devices, repeated
+    structures still come out evenly spaced.
+    """
+    widths = []
+    for slot in group.slots:
+        for item in slot.items:
+            spec = specs[netlist.components[item.ref].kind]
+            if not spec.is_terminal:
+                widths.append(spec.width / G)
+    if not widths:
+        return opts['slot_pitch']
+    return max(2, math.ceil(max(widths) - 1e-6)) + opts['clearance']
+
+
 def place(plan, netlist, specs):
     """Return {ref: Placed} and the column each group occupies."""
     opts = plan.opts
@@ -71,8 +90,7 @@ def place(plan, netlist, specs):
                        else opts['group_gap'])
         pitch = group.pitch
         if pitch is None:
-            pitch = (opts['leg_pitch'] if group.role == 'bridge'
-                     else opts['slot_pitch'])
+            pitch = _natural_pitch(group, netlist, specs, opts)
 
         first = cursor
         for si, slot in enumerate(group.slots):

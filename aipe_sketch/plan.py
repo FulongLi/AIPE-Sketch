@@ -6,22 +6,44 @@ geometry deterministically, so equivalent topology becomes equivalent
 geometry by construction rather than by optimisation.
 """
 
-# Named rows, in grid units.  A converter leg spans dc_pos..dc_neg with the
-# switching node exactly centred between the two devices.
+# Every symbol in the library is exactly 4 G tall, so 4 G is the natural unit
+# of visual scale: one component dimension.  Every spacing below is a multiple
+# of it, which is what gives the drawing a repeating rhythm.
+CELL = 4                 # one component dimension, in grid units
+CLEARANCE = CELL         # preferred gap between neighbouring bodies
+PITCH = 2 * CELL         # centre-to-centre for adjacent components
+GROUP_PITCH = 10         # centre-to-centre across a functional boundary
+ANCHOR_PITCH = 9         # around a visually dense anchor such as a transformer
+
+# Named rows.  A leg spans dc_pos..dc_neg, the two devices are one component
+# dimension apart, and the switching node sits exactly between them.
 ROWS = {
-    'dc_pos': 8,
-    'high': 10,          # centre of the high-side device
-    'gate_high': 11,     # gate lead of a high-side device
-    'mid': 16,           # switching node
-    'low': 22,           # centre of the low-side device
-    'gate_low': 23,      # gate lead of a low-side device
-    'dc_neg': 24,
+    'dc_pos': 6,
+    'high': 8,           # device spans 6..10
+    'gate_high': 9,      # gate lead of a high-side device
+    'mid': 12,           # switching node, 4 G clear of both devices
+    'low': 16,           # device spans 14..18
+    'gate_low': 17,
+    'dc_neg': 18,
+}
+
+# A leg whose midpoint has to carry several take-off corridors needs a taller
+# gap: three phase outputs 2 G apart do not fit in a 4 G window.
+ROWS_TALL = {
+    'dc_pos': 6,
+    'high': 8,           # device spans 6..10
+    'gate_high': 9,
+    'mid': 13,           # midpoint window is 10..16
+    'low': 18,           # device spans 16..20
+    'gate_low': 19,
+    'dc_neg': 20,
 }
 
 DEFAULTS = dict(
-    leg_pitch=8,         # between legs of one bridge
-    slot_pitch=6,        # between slots of a non-bridge group
-    group_gap=7,         # whitespace between functional groups
+    clearance=CLEARANCE,  # gap added around the widest body in a group
+    leg_pitch=PITCH,      # fallback between legs of one bridge
+    slot_pitch=PITCH,     # fallback between slots of a group
+    group_gap=GROUP_PITCH,
     start_col=6,
 )
 

@@ -27,6 +27,7 @@ and `placement.py` is the only module that invents a coordinate.
 | placement | `placement.py` | exact coordinates, on grid |
 | routing | `router.py` | Manhattan wires, rails, junction dots |
 | scoring | `score.py` | cost and the 0–100 scorecard |
+| drawing rules | `drawing_rules.py` | is it compact, regular and conventional |
 | validation | `validate.py` | does the drawing match the netlist |
 | orchestration | `pipeline.py` | run it, repair it, render it |
 
@@ -43,18 +44,72 @@ python3 -m unittest discover -s tests
 
 All six are regression tests. Current scores:
 
-| topology | connectivity | symmetry | spacing | align | routing | crossings | overall |
-|---|---|---|---|---|---|---|---|
-| buck | 100 | 100 | 100 | 100 | 100 | 100 | **100** |
-| boost | 100 | 100 | 100 | 100 | 100 | 100 | **100** |
-| half bridge | 100 | 100 | 100 | 100 | 100 | 100 | **100** |
-| full bridge | 100 | 100 | 100 | 100 | 100 | 100 | **100** |
-| three-phase 2-level | 100 | 100 | 100 | 100 | 99 | 86 | **98** |
-| DAB | 100 | 100 | 100 | 100 | 100 | 94 | **99** |
+| topology | conn | sym | rhythm | clearance | conventions | overall |
+|---|---|---|---|---|---|---|
+| buck | 100 | 100 | 93 | 100 | 100 | **99** |
+| boost | 100 | 100 | 100 | 100 | 100 | **100** |
+| half bridge | 100 | 100 | 100 | 100 | 100 | **100** |
+| full bridge | 100 | 100 | 95 | 97 | 100 | **97** |
+| three-phase 2-level | 100 | 100 | 94 | 97 | 100 | **98** |
+| DAB | 100 | 100 | 98 | 98 | 100 | **99** |
+
+Every drawing also answers the fifteen whole-drawing questions cleanly
+(`python3 build.py --checks`).
 
 The crossings in the last two are the topological minimum: three phase outputs
 reaching a shared column must pass two legs, one leg and none; the DAB's two
 bridges each reach across one leg to the transformer.
+
+## Visual scale
+
+Every symbol in the library is exactly **4 G tall**, so 4 G is the unit of
+visual scale — one component dimension, called `CELL`. Every spacing derives
+from it:
+
+| quantity | value |
+|---|---|
+| clearance between neighbouring bodies | 1 CELL |
+| leg midpoint gap | 1 CELL (1.5 where take-off corridors need room) |
+| slot pitch inside a group | widest body + 1 CELL |
+| functional-group pitch | 10 G |
+| around a transformer | 9 G — more clearance than a passive gets |
+
+Slot pitch is derived from the group's own widest body, so narrow passives sit
+close together while switching devices keep a full cell apart. Because every
+slot of a repeated structure holds the same devices, repeated structures still
+come out evenly spaced. Measured body-to-body gaps across all six topologies
+are 1.00–1.12 CELL.
+
+The sheet is fitted to its content and the whole drawing is shifted into the
+margin by a whole number of grid steps, so nothing is ever clipped and
+placement stays on grid.
+
+## Terminals, junctions and crossings
+
+Three visually distinct things:
+
+| meaning | drawn as |
+|---|---|
+| external port | open circle, r = 0.6 mm, page-coloured fill |
+| electrical junction | filled dot, r = 0.4 mm |
+| wires crossing, not connected | nothing |
+
+Every exposed node — input, output, phase, gate drive — is a real `terminal`
+component in the netlist, so it renders as an open circle and **no wire ever
+ends in mid-air**. `drawing_rules.floating_ends` asserts this: a wire end must
+be a port, a corner, or a tee onto another run.
+
+A terminal's ring sits on the wire end by design, so terminals are excluded
+from routing obstacles and wire-collision checks while still counting for
+label and overlap purposes.
+
+## Source symbols
+
+The sheet's source circle carries no polarity and no direction, and
+conventional practice requires both, so they are drawn as decoration over the
+symbol: `+` and `\u2212` inside the circle with the plus toward the positive
+terminal, and a current source gets a shaft-and-head arrow pointing from the
+current-entry terminal to the current-exit one.
 
 ## Netlist as source of truth
 
@@ -107,6 +162,26 @@ than repaired afterwards — the scorer verifies them instead of fixing them.
 `placement.check_regularity()` raises before rendering if a plan would break a
 detected repeated structure.
 
+## Drawing-rule metrics
+
+`drawing_rules.py` measures the general rules. Three of them needed care to
+avoid measuring the wrong thing:
+
+* **Rule 22 (rhythm)** counts *distinct local length scales*, not deviation
+  from a target length. A converter legitimately uses four — gate stubs, rail
+  stubs, leg midpoints, inter-stage runs — each for a different purpose, so
+  the threshold is four. Consistency *within* a role is measured exactly and
+  separately by `local_consistency` and `wire_uniformity`, both zero
+  everywhere.
+* **Rule 23 (local consistency)** compares only the power path. A DC rail is a
+  long haul set by the floorplan and a gate stub is squeezed by the leg pitch;
+  neither says anything about local regularity. Including them made every
+  switching device look defective.
+* **Rule 17 (transformer)** measures the wire runs actually attached to the
+  transformer's ports. The first version measured the distance from the
+  transformer's centre to its own ports, which is a constant — a check that
+  could not fail.
+
 ## Cost and quality
 
 ```
@@ -152,6 +227,10 @@ unit.
 
 ## Known limits
 
+* **The DAB's far-leg transformer run is unavoidably long** — 3.75 CELL
+  against 1.75 for the near leg. A full bridge's outer leg has to reach past
+  the inner one, so the two connections cannot be equal length. Reported by
+  check 10 rather than hidden.
 * **Placement is plan-driven, not automatic.** The placer is deterministic and
   enforces regularity, but a human still writes the plan — which groups exist
   and in what order. Auto-generating a plan from `analysis.analyse()` output is
@@ -166,6 +245,10 @@ unit.
 * **Label boxes are estimated, not measured** — no font metrics available.
   Deliberately pessimistic (0.62 em/glyph, 1.15 em line height, 0.35 mm pad),
   but it is the weakest input to the collision checker.
+* **Rule 19 (resonant tank) is untested.** Nothing in the catalogue has a
+  series resonant path, so the "one horizontal centreline with comparable
+  spacing" rule has no example behind it.
+* **The scale threshold of four is a judgement call**, not a derived number.
 * **`pins.py` covers 14 part kinds of 196 symbols.** `tools/inspect_symbol.py`
   prints the measurements needed to add more; `KNOWN_DIRTY` lists symbol
   wrappers that need cleaning first.

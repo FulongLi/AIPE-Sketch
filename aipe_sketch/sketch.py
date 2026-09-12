@@ -87,6 +87,13 @@ class Sketch:
         mid = (b[0], a[1]) if first == 'h' else (a[0], b[1])
         self.wire(a, mid, b)
 
+    def open_circle(self, x, y, r):
+        """An external terminal: filled with the page colour so the wire end
+        is hidden, outlined so it reads as an open ring."""
+        ET.SubElement(self.layer, NS + 'circle', {
+            'cx': str(round(x, 4)), 'cy': str(round(y, 4)), 'r': str(r),
+            'style': 'fill:#ffffff;stroke:#000000;stroke-width:0.264583'})
+
     def dot(self, *points):
         for p in points:
             ET.SubElement(self.layer, NS + 'circle',

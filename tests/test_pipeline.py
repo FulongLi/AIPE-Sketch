@@ -112,9 +112,11 @@ class TestTopologies(unittest.TestCase):
         for name in NAMES:
             first = os.path.join(OUT, f'{name}.svg')
             build.build(name, out_dir=OUT)
-            a = open(first, 'rb').read()
+            with open(first, 'rb') as fh:
+                a = fh.read()
             build.build(name, out_dir=OUT)
-            b = open(first, 'rb').read()
+            with open(first, 'rb') as fh:
+                b = fh.read()
             self.assertEqual(a, b, f'{name} is not reproducible')
 
     def test_quality_threshold(self):

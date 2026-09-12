@@ -1,15 +1,17 @@
 """The six reference converters, as netlists plus layout plans.
 
-Each entry returns (netlist, plan, options).  The netlist is the circuit;
-the plan says only what belongs where relative to what.  All coordinates
-come from the placer.
+Reference designators follow conventional practice: V/I sources, R, L, C,
+Q for switching devices, D for diodes, T for transformers.  Every exposed
+node is a real terminal component, so it renders as an open circle and no
+wire ever ends in mid-air.
 """
 from .netlist import Netlist
-from .plan import Group, Item, LayoutPlan, Slot, bridge_group
+from .plan import (ANCHOR_PITCH, Group, Item, LayoutPlan, ROWS, ROWS_TALL,
+                   Slot)
 from . import analysis
 
-GATE_DX = -4          # gate terminal, grid units left of its leg
-OUT_DX = 3            # output terminal, grid units right of its column
+GATE_DX = -4          # gate terminal, one component dimension left of its leg
+OUT_DX = 3            # output terminal, clear of the last component
 
 
 def _gnd(nl, ref='GND1'):
@@ -17,196 +19,199 @@ def _gnd(nl, ref='GND1'):
     return ref
 
 
+def _gate(nl, ref):
+    """A gate drive port: external, so it gets an open circle."""
+    nl.add(ref, 'terminal')
+    return ref
+
+
 # ------------------------------------------------------------------ buck
 def buck():
     n = Netlist('Buck Converter')
-    n.add('V1', 'vsource', label='V', sub='in')
-    n.add('Cin', 'cap', label='C', sub='in')
+    n.add('V1', 'vsource', label='V', sub='1')
+    n.add('C1', 'cap', label='C', sub='1')
     n.add('Q1', 'nmos', label='Q', sub='1')
     n.add('D1', 'diode', label='D', sub='1')
     n.add('L1', 'ind', label='L', sub='1')
-    n.add('Cout', 'cap', label='C', sub='out')
-    n.add('RL', 'res', label='R', sub='L')
+    n.add('C2', 'cap', label='C', sub='2')
+    n.add('R1', 'res', label='R', sub='1')
     _gnd(n)
-    n.add('PWM', 'terminal', label='PWM', italic=False)
+    _gate(n, 'G1')
     n.add('VOUT', 'terminal', label='V', sub='out')
 
-    n.connect('DC_POS', 'V1.p', 'Cin.a', 'Q1.d')
+    n.connect('DC_POS', 'V1.p', 'C1.a', 'Q1.d')
     n.connect('SW', 'Q1.s', 'D1.k', 'L1.a')
-    n.connect('VOUT_N', 'L1.b', 'Cout.a', 'RL.a', 'VOUT.t')
-    n.connect('DC_NEG', 'V1.n', 'Cin.b', 'D1.a', 'Cout.b', 'RL.b', 'GND1.t')
-    n.connect('GATE', 'Q1.g', 'PWM.t')
+    n.connect('VOUT_N', 'L1.b', 'C2.a', 'R1.a', 'VOUT.t')
+    n.connect('DC_NEG', 'V1.n', 'C1.b', 'D1.a', 'C2.b', 'R1.b', 'GND1.t')
+    n.connect('GATE', 'Q1.g', 'G1.t')
 
-    legs = analysis.find_legs(n)
+    leg = analysis.find_legs(n)[0]
     plan = LayoutPlan([
         Group('input_dc_link', 'source', [
             Slot(Item('V1', ('dc_pos', 'dc_neg'), label_side='left')),
-            Slot(Item('Cin', ('dc_pos', 'dc_neg'), label_side='left'))]),
+            Slot(Item('C1', ('dc_pos', 'dc_neg'), label_side='left'))]),
         Group('bridge', 'bridge', [
-            Slot(Item(legs[0].high, 'high'),
-                 Item(legs[0].low, 'low', label_side='right'),
+            Slot(Item(leg.high, 'high'), Item(leg.low, 'low'),
                  Item('GND1', 'dc_neg'),
-                 Item('PWM', 'gate_high', dx=GATE_DX, label_side='left'))]),
-        Group('output_filter', 'filter', [
+                 Item('G1', 'gate_high', dx=GATE_DX, label_side='left'))]),
+        Group('output', 'filter', [
             Slot(Item('L1', 'mid', rot=-90, label_side='above')),
-            Slot(Item('Cout', ('mid', 'dc_neg'), label_side='left'))]),
-        Group('load', 'load', [
-            Slot(Item('RL', ('mid', 'dc_neg')),
-                 Item('VOUT', 'mid', dx=OUT_DX))]),
+            Slot(Item('C2', ('mid', 'dc_neg'), label_side='left')),
+            Slot(Item('R1', ('mid', 'dc_neg')),
+                 Item('VOUT', 'mid', dx=OUT_DX, label_side='above'))]),
     ])
-    return n, plan, dict(size=(150, 80), trunks={'VOUT_N': ('h', 16)})
+    return n, plan, dict(
+                         trunks={'VOUT_N': ('h', 'mid')},
+                         notes=[('V1', 'dc_pos', 0.4, -1.3, 'V', 'in')])
 
 
 # ------------------------------------------------------------------ boost
 def boost():
     n = Netlist('Boost Converter')
-    n.add('V1', 'vsource', label='V', sub='in')
+    n.add('V1', 'vsource', label='V', sub='1')
     n.add('L1', 'ind', label='L', sub='1')
     n.add('D1', 'diode', label='D', sub='1')
     n.add('Q1', 'nmos', label='Q', sub='1')
-    n.add('Cout', 'cap', label='C', sub='out')
-    n.add('RL', 'res', label='R', sub='L')
+    n.add('C1', 'cap', label='C', sub='1')
+    n.add('R1', 'res', label='R', sub='1')
     _gnd(n)
-    n.add('PWM', 'terminal', label='PWM', italic=False)
+    _gate(n, 'G1')
     n.add('VOUT', 'terminal', label='V', sub='out')
 
     n.connect('VIN', 'V1.p', 'L1.a')
     n.connect('SW', 'L1.b', 'D1.a', 'Q1.d')
-    n.connect('VOUT_N', 'D1.k', 'Cout.a', 'RL.a', 'VOUT.t')
-    n.connect('DC_NEG', 'V1.n', 'Q1.s', 'Cout.b', 'RL.b', 'GND1.t')
-    n.connect('GATE', 'Q1.g', 'PWM.t')
+    n.connect('VOUT_N', 'D1.k', 'C1.a', 'R1.a', 'VOUT.t')
+    n.connect('DC_NEG', 'V1.n', 'Q1.s', 'C1.b', 'R1.b', 'GND1.t')
+    n.connect('GATE', 'Q1.g', 'G1.t')
 
-    # A boost is a leg topologically -- D1 above the switching node, Q1
-    # below -- but it is drawn the conventional way: the inductor and diode
-    # sit in series along the top rail with the switch hanging below the node.
+    # Topologically a leg -- D1 above the node, Q1 below -- but drawn the
+    # conventional way: L and D in series along the rail, switch below.
     plan = LayoutPlan([
         Group('input_dc_link', 'source', [
             Slot(Item('V1', ('dc_pos', 'dc_neg'), label_side='left'))]),
         Group('conversion', 'conversion', [
             Slot(Item('L1', 'dc_pos', rot=-90, label_side='above')),
-            Slot(Item('Q1', 'low'),
-                 Item('GND1', 'dc_neg'),
-                 Item('PWM', 'gate_low', dx=GATE_DX, label_side='left')),
-            Slot(Item('D1', 'dc_pos', rot=90, label_side='above'))],
-            pitch=6),
-        Group('output_filter', 'filter', [
-            Slot(Item('Cout', ('dc_pos', 'dc_neg'), label_side='left'))]),
-        Group('load', 'load', [
-            Slot(Item('RL', ('dc_pos', 'dc_neg')),
+            Slot(Item('Q1', 'low'), Item('GND1', 'dc_neg'),
+                 Item('G1', 'gate_low', dx=GATE_DX, label_side='left')),
+            Slot(Item('D1', 'dc_pos', rot=90, label_side='above'))]),
+        Group('output', 'filter', [
+            Slot(Item('C1', ('dc_pos', 'dc_neg'), label_side='left')),
+            Slot(Item('R1', ('dc_pos', 'dc_neg')),
                  Item('VOUT', 'dc_pos', dx=OUT_DX, label_side='above'))]),
     ])
-    return n, plan, dict(size=(150, 80),
-                         trunks={'VIN': ('h', 8), 'VOUT_N': ('h', 8),
-                                 'SW': ('v', 'Q1')})
+    return n, plan, dict(
+                         trunks={'VIN': ('h', 'dc_pos'),
+                                 'VOUT_N': ('h', 'dc_pos'),
+                                 'SW': ('v', 'Q1')},
+                         notes=[('V1', 'dc_pos', 0.4, -1.3, 'V', 'in')])
 
 
 # ------------------------------------------------------------------ bridges
-def _switch_bridge(name, nlegs, kind='nmos', with_load=False):
-    n = Netlist(name)
-    n.add('V1', 'vsource', label='V', sub='dc')
-    n.add('Cdc', 'cap', label='C', sub='dc')
+def _dc_link(n):
+    n.add('V1', 'vsource', label='V', sub='1')
+    n.add('C1', 'cap', label='C', sub='1')
     _gnd(n)
-    phases = 'abc'[:nlegs] if nlegs <= 3 else None
-    tags = list(phases) if phases else [str(i + 1) for i in range(nlegs)]
+    return Group('input_dc_link', 'source', [
+        Slot(Item('V1', ('dc_pos', 'dc_neg'), label_side='left')),
+        Slot(Item('C1', ('dc_pos', 'dc_neg'), label_side='left'))])
 
-    pos = [f'S{t}p' for t in tags]
-    neg = [f'S{t}n' for t in tags]
-    for t in tags:
-        n.add(f'S{t}p', kind, label='S', sub=f'{t}+')
-        n.add(f'S{t}n', kind, label='S', sub=f'{t}-')
-        n.add(f'G{t}p', 'terminal')
-        n.add(f'G{t}n', 'terminal')
 
-    hi = 'd' if kind.startswith('nmos') else 'c'
-    lo = 's' if kind.startswith('nmos') else 'e'
-    n.connect('DC_POS', 'V1.p', 'Cdc.a', *[f'{r}.{hi}' for r in pos])
-    n.connect('DC_NEG', 'V1.n', 'Cdc.b', 'GND1.t', *[f'{r}.{lo}' for r in neg])
-    for t in tags:
-        n.connect(f'G_{t}p', f'S{t}p.g', f'G{t}p.t')
-        n.connect(f'G_{t}n', f'S{t}n.g', f'G{t}n.t')
-    return n, tags, hi, lo
+def _leg_slot(high, low, gate_hi, gate_lo, extra=()):
+    return Slot(Item(high, 'high'), Item(low, 'low'),
+                Item(gate_hi, 'gate_high', dx=GATE_DX, label_side='left'),
+                Item(gate_lo, 'gate_low', dx=GATE_DX, label_side='left'),
+                *extra)
+
+
+def _switches(n, count, kind='nmos', start=1):
+    refs = []
+    for i in range(count):
+        ref = f'Q{start + i}'
+        n.add(ref, kind, label='Q', sub=str(start + i))
+        _gate(n, f'G{start + i}')
+        refs.append(ref)
+    return refs
 
 
 def half_bridge():
-    n, tags, hi, lo = _switch_bridge('Half Bridge', 1)
-    n.add('OUT', 'terminal', label='V', sub='sw')
-    n.connect('SW_A', 'Sap.s', 'San.d', 'OUT.t')
+    n = Netlist('Half Bridge')
+    link = _dc_link(n)
+    _switches(n, 2)
+    n.add('VOUT', 'terminal', label='V', sub='out')
 
-    legs = analysis.find_legs(n)
+    n.connect('DC_POS', 'V1.p', 'C1.a', 'Q1.d')
+    n.connect('SW', 'Q1.s', 'Q2.d', 'VOUT.t')
+    n.connect('DC_NEG', 'V1.n', 'C1.b', 'Q2.s', 'GND1.t')
+    n.connect('G_1', 'Q1.g', 'G1.t')
+    n.connect('G_2', 'Q2.g', 'G2.t')
+
     plan = LayoutPlan([
-        Group('input_dc_link', 'source', [
-            Slot(Item('V1', ('dc_pos', 'dc_neg'), label_side='left')),
-            Slot(Item('Cdc', ('dc_pos', 'dc_neg'), label_side='left'))]),
+        link,
         Group('bridge', 'bridge', [
-            Slot(Item(legs[0].high, 'high'), Item(legs[0].low, 'low'),
-                 Item('GND1', 'dc_neg'),
-                 Item('Gap', 'gate_high', dx=GATE_DX),
-                 Item('Gan', 'gate_low', dx=GATE_DX))]),
+            _leg_slot('Q1', 'Q2', 'G1', 'G2', (Item('GND1', 'dc_neg'),))]),
         Group('output', 'output', [
-            Slot(Item('OUT', 'mid'))], gap_before=8),
+            Slot(Item('VOUT', 'mid', label_side='above'))]),
     ])
-    return n, plan, dict(size=(120, 80))
+    return n, plan, dict(
+                         notes=[('V1', 'dc_pos', 0.4, -1.3, 'V', 'in')])
 
 
 def full_bridge():
-    n, tags, hi, lo = _switch_bridge('Full Bridge', 2)
-    n.add('RL', 'res', label='R', sub='L')
-    n.connect('OUT_A', 'Sap.s', 'San.d', 'RL.a')
-    n.connect('OUT_B', 'Sbp.s', 'Sbn.d', 'RL.b')
+    n = Netlist('Full Bridge')
+    link = _dc_link(n)
+    _switches(n, 4)
+    n.add('R1', 'res', label='R', sub='1')
 
-    legs = analysis.find_legs(n)
-    by_mid = {l.mid: l for l in legs}
-    order = [by_mid['OUT_A'], by_mid['OUT_B']]
-    slots = []
-    for i, leg in enumerate(order):
-        items = [Item(leg.high, 'high'), Item(leg.low, 'low'),
-                 Item(f'G{tags[i]}p', 'gate_high', dx=GATE_DX),
-                 Item(f'G{tags[i]}n', 'gate_low', dx=GATE_DX)]
-        if i == 0:
-            items.append(Item('GND1', 'dc_neg'))
-            items.append(Item('RL', 'mid', dx=4, rot=-90, label_side='above'))
-        slots.append(Slot(*items))
+    n.connect('DC_POS', 'V1.p', 'C1.a', 'Q1.d', 'Q3.d')
+    n.connect('OUT_A', 'Q1.s', 'Q2.d', 'R1.a')
+    n.connect('OUT_B', 'Q3.s', 'Q4.d', 'R1.b')
+    n.connect('DC_NEG', 'V1.n', 'C1.b', 'Q2.s', 'Q4.s', 'GND1.t')
+    for i in range(1, 5):
+        n.connect(f'G_{i}', f'Q{i}.g', f'G{i}.t')
+
     plan = LayoutPlan([
-        Group('input_dc_link', 'source', [
-            Slot(Item('V1', ('dc_pos', 'dc_neg'), label_side='left')),
-            Slot(Item('Cdc', ('dc_pos', 'dc_neg'), label_side='left'))]),
-        Group('bridge', 'bridge', slots),
+        link,
+        Group('bridge', 'bridge', [
+            _leg_slot('Q1', 'Q2', 'G1', 'G2',
+                      (Item('GND1', 'dc_neg'),
+                       Item('R1', 'mid', dx=4, rot=-90, label_side='above'))),
+            _leg_slot('Q3', 'Q4', 'G3', 'G4')]),
     ])
-    return n, plan, dict(size=(140, 80))
+    return n, plan, dict(
+                         notes=[('V1', 'dc_pos', 0.4, -1.3, 'V', 'in')])
 
 
 def three_phase_inverter():
-    n, tags, hi, lo = _switch_bridge('Three-Phase Two-Level Inverter', 3,
-                                     kind='igbt')
-    for t in tags:
-        n.add(f'PH{t.upper()}', 'terminal', label=t.upper())
-        n.connect(f'PH_{t.upper()}', f'S{t}p.e', f'S{t}n.c',
-                  f'PH{t.upper()}.t')
+    n = Netlist('Three-Phase Two-Level Inverter')
+    link = _dc_link(n)
+    _switches(n, 6, kind='igbt')
+    phases = ('A', 'B', 'C')
+    for ph in phases:
+        n.add(f'PH{ph}', 'terminal', label=ph)
 
-    legs = analysis.find_legs(n)
-    by_mid = {l.mid: l for l in legs}
+    n.connect('DC_POS', 'V1.p', 'C1.a', 'Q1.c', 'Q3.c', 'Q5.c')
+    n.connect('DC_NEG', 'V1.n', 'C1.b', 'Q2.e', 'Q4.e', 'Q6.e', 'GND1.t')
+    for i, ph in enumerate(phases):
+        hi, lo = f'Q{2 * i + 1}', f'Q{2 * i + 2}'
+        n.connect(f'PH_{ph}', f'{hi}.e', f'{lo}.c', f'PH{ph}.t')
+    for i in range(1, 7):
+        n.connect(f'G_{i}', f'Q{i}.g', f'G{i}.t')
+
     slots = []
-    for t in tags:
-        leg = by_mid[f'PH_{t.upper()}']
-        items = [Item(leg.high, 'high'), Item(leg.low, 'low'),
-                 Item(f'G{t}p', 'gate_high', dx=GATE_DX),
-                 Item(f'G{t}n', 'gate_low', dx=GATE_DX)]
-        if t == 'a':
-            items.append(Item('GND1', 'dc_neg'))
-        slots.append(Slot(*items))
-    # phase take-offs are staggered so each run to the right is a straight
-    # line; equal spacing keeps the three of them visually parallel
-    taps = {'a': 14, 'b': 16, 'c': 18}
+    for i in range(3):
+        extra = (Item('GND1', 'dc_neg'),) if i == 0 else ()
+        slots.append(_leg_slot(f'Q{2 * i + 1}', f'Q{2 * i + 2}',
+                               f'G{2 * i + 1}', f'G{2 * i + 2}', extra))
+    # three take-off corridors, evenly spaced inside the midpoint window
+    taps = {'A': 11, 'B': 13, 'C': 15}
     plan = LayoutPlan([
-        Group('input_dc_link', 'source', [
-            Slot(Item('V1', ('dc_pos', 'dc_neg'), label_side='left')),
-            Slot(Item('Cdc', ('dc_pos', 'dc_neg'), label_side='left'))]),
+        link,
         Group('bridge', 'bridge', slots),
         Group('output', 'output', [
-            Slot(*[Item(f'PH{t.upper()}', taps[t]) for t in tags])],
-            gap_before=9),
-    ])
-    return n, plan, dict(size=(165, 80))
+            Slot(*[Item(f'PH{ph}', taps[ph]) for ph in phases])]),
+    ], rows=ROWS_TALL)
+    return n, plan, dict(
+                         notes=[('V1', 'dc_pos', 0.4, -1.3, 'V', 'in')])
 
 
 # ------------------------------------------------------------------ DAB
@@ -214,57 +219,52 @@ def dab():
     n = Netlist('Dual Active Bridge')
     n.add('V1', 'vsource', label='V', sub='1')
     n.add('C1', 'cap', label='C', sub='1')
-    n.add('TX', 'transformer', label='T', sub='x')
+    n.add('T1', 'transformer', label='T', sub='1')
     n.add('C2', 'cap', label='C', sub='2')
-    n.add('RL', 'res', label='R', sub='L')
+    n.add('R1', 'res', label='R', sub='1')
     _gnd(n, 'GND1')
     _gnd(n, 'GND2')
-    n.add('VOUT', 'terminal', label='V', sub='2')
-
-    for tag in ('1', '2', '3', '4'):
-        n.add(f'Q{tag}', 'nmos', label='Q', sub=tag)
-        n.add(f'G{tag}', 'terminal')
-    for tag in ('5', '6', '7', '8'):
-        n.add(f'Q{tag}', 'nmos', label='Q', sub=tag)
-        n.add(f'G{tag}', 'terminal')
+    n.add('VOUT', 'terminal', label='V', sub='out')
+    _switches(n, 8)
 
     n.connect('DCP1', 'V1.p', 'C1.a', 'Q1.d', 'Q3.d')
     n.connect('DCN1', 'V1.n', 'C1.b', 'Q2.s', 'Q4.s', 'GND1.t')
-    n.connect('PRI_A', 'Q1.s', 'Q2.d', 'TX.p1')
-    n.connect('PRI_B', 'Q3.s', 'Q4.d', 'TX.p2')
-    n.connect('SEC_A', 'Q5.s', 'Q6.d', 'TX.s1')
-    n.connect('SEC_B', 'Q7.s', 'Q8.d', 'TX.s2')
-    n.connect('DCP2', 'Q5.d', 'Q7.d', 'C2.a', 'RL.a', 'VOUT.t')
-    n.connect('DCN2', 'Q6.s', 'Q8.s', 'C2.b', 'RL.b', 'GND2.t')
-    for tag in '12345678':
-        n.connect(f'G_{tag}', f'Q{tag}.g', f'G{tag}.t')
-
-    def leg_slot(high, low, gh, gl, extra=()):
-        return Slot(Item(high, 'high'), Item(low, 'low'),
-                    Item(gh, 'gate_high', dx=GATE_DX),
-                    Item(gl, 'gate_low', dx=GATE_DX), *extra)
+    n.connect('PRI_A', 'Q1.s', 'Q2.d', 'T1.p1')
+    n.connect('PRI_B', 'Q3.s', 'Q4.d', 'T1.p2')
+    n.connect('SEC_A', 'Q5.s', 'Q6.d', 'T1.s1')
+    n.connect('SEC_B', 'Q7.s', 'Q8.d', 'T1.s2')
+    n.connect('DCP2', 'Q5.d', 'Q7.d', 'C2.a', 'R1.a', 'VOUT.t')
+    n.connect('DCN2', 'Q6.s', 'Q8.s', 'C2.b', 'R1.b', 'GND2.t')
+    for i in range(1, 9):
+        n.connect(f'G_{i}', f'Q{i}.g', f'G{i}.t')
 
     plan = LayoutPlan([
         Group('input_dc_link', 'source', [
             Slot(Item('V1', ('dc_pos', 'dc_neg'), label_side='left')),
             Slot(Item('C1', ('dc_pos', 'dc_neg'), label_side='left'))]),
         Group('primary_bridge', 'bridge', [
-            leg_slot('Q1', 'Q2', 'G1', 'G2', (Item('GND1', 'dc_neg'),)),
-            leg_slot('Q3', 'Q4', 'G3', 'G4')]),
+            _leg_slot('Q1', 'Q2', 'G1', 'G2', (Item('GND1', 'dc_neg'),)),
+            _leg_slot('Q3', 'Q4', 'G3', 'G4')]),
+        # a transformer is visually dense, so it is given more room than an
+        # ordinary passive on both sides
         Group('isolation', 'isolation', [
-            Slot(Item('TX', 'mid', label_side='above'))]),
+            Slot(Item('T1', 'mid', label_side='above'))],
+            gap_before=ANCHOR_PITCH),
         Group('secondary_bridge', 'bridge', [
-            leg_slot('Q5', 'Q6', 'G5', 'G6'),
-            leg_slot('Q7', 'Q8', 'G7', 'G8', (Item('GND2', 'dc_neg'),))]),
-        Group('output_filter', 'filter', [
-            Slot(Item('C2', ('dc_pos', 'dc_neg'), label_side='left'))]),
-        Group('load', 'load', [
-            Slot(Item('RL', ('dc_pos', 'dc_neg')),
+            _leg_slot('Q5', 'Q6', 'G5', 'G6'),
+            _leg_slot('Q7', 'Q8', 'G7', 'G8', (Item('GND2', 'dc_neg'),))],
+            gap_before=ANCHOR_PITCH),
+        Group('output', 'filter', [
+            Slot(Item('C2', ('dc_pos', 'dc_neg'), label_side='left')),
+            Slot(Item('R1', ('dc_pos', 'dc_neg')),
                  Item('VOUT', 'dc_pos', dx=OUT_DX, label_side='above'))]),
-    ])
-    return n, plan, dict(size=(230, 80),
-                         trunks={'DCP1': ('h', 8), 'DCN1': ('h', 24),
-                                 'DCP2': ('h', 8), 'DCN2': ('h', 24)})
+    ], rows=ROWS_TALL)
+    return n, plan, dict(
+                         trunks={'DCP1': ('h', 'dc_pos'),
+                                 'DCN1': ('h', 'dc_neg'),
+                                 'DCP2': ('h', 'dc_pos'),
+                                 'DCN2': ('h', 'dc_neg')},
+                         notes=[('V1', 'dc_pos', 0.4, -1.3, 'V', 'in')])
 
 
 CATALOGUE = {

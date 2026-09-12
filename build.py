@@ -17,9 +17,11 @@ SRC = os.path.join(ROOT, 'Inkscape_Symbols_All.svg')
 
 def build(name, out_dir=None):
     netlist, plan, opts = CATALOGUE[name]()
-    sch = Schematic(SRC, netlist, plan, size=opts.get('size', (160, 80)))
+    sch = Schematic(SRC, netlist, plan, size=opts.get('size'))
     sch.trunks.update(opts.get('trunks', {}))
     sch.route()
+    for ref, row, dx, dy, text, sub in opts.get('notes', ()):
+        sch.note(ref, row, text, sub=sub, dx=dx, dy=dy, anchor='start')
     out = os.path.join(out_dir or os.path.join(ROOT, 'out'), f'{name}.svg')
     card, log = sch.render(out)
     return sch, card, log, out
@@ -42,7 +44,7 @@ def main(argv):
         for name in argv[1:] or list(CATALOGUE):
             show_plan(name)
         return 0
-    names = argv or list(CATALOGUE)
+    names = [a for a in argv if not a.startswith('--')] or list(CATALOGUE)
     failures = []
     for name in names:
         try:
@@ -53,6 +55,11 @@ def main(argv):
             continue
         print(f'\n=== {name} ===')
         print(card)
+        if '--checks' in argv:
+            print('  whole-drawing check:')
+            for q, (verdict, detail) in card.checks.items():
+                note = f'  -- {detail}' if detail else ''
+                print(f'    {verdict:<5} {q}{note}')
         for line in log:
             print(f'  repair: {line}')
         print(f'  -> {os.path.relpath(out, ROOT)}')

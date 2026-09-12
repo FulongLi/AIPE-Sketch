@@ -40,12 +40,15 @@ WEIGHTS = {
     'redundant_annotation': 2000,
     'centreline_deviation': 3000,
     'near_component_bend': 1500,
+    'shunt_balance': 4000,
+    'shunt_detour': 30000,
     'symbol_distortion': 60000,
 }
 
 FATAL = ('connectivity', 'component_overlap', 'wire_component_collision',
          'label_overlap', 'out_of_bounds', 'rail_step', 'floating_end',
-         'external_marker', 'transformer_spread', 'symbol_distortion')
+         'external_marker', 'transformer_spread', 'symbol_distortion',
+         'shunt_detour')
 
 SPACING = dict(minimum=3 * G, target_lo=4 * G, target_hi=6 * G,
                group_lo=6 * G, group_hi=10 * G)
@@ -332,6 +335,13 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
         drawing_rules.near_component_bend_penalty(netlist, placed, paths)
     faults += bend_faults[:4]
 
+    raw['shunt_balance'], shunt_faults, raw['shunt_branches'] = \
+        drawing_rules.shunt_branch_balance(netlist, placed, paths)
+    faults += shunt_faults
+    detours = drawing_rules.shunt_verticality(netlist, placed, paths)
+    raw['shunt_detour'] = len(detours)
+    faults += detours
+
     raw['fill'], raw['aspect'] = drawing_rules.compactness(solid, paths)
     raw['largest_void'] = drawing_rules.occupancy(solid, paths)
     for ref, lo, hi in uneven[:6]:
@@ -360,7 +370,9 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
                           - 60 * raw['wire_uniformity'] / max(1, nnets)
                           - 25 * raw['routing_shape']),
         'power_path': _clamp(100 - 40 * raw['centreline_deviation']
-                             - 30 * raw['near_component_bend']),
+                             - 30 * raw['near_component_bend']
+                             - 45 * raw['shunt_balance']
+                             - 50 * raw['shunt_detour']),
         'crossings': _clamp(100 - 100 * raw['crossing'] / (2 * nnets)),
         'topology_readability': _clamp(
             100 - raw['spacing_target'] / (8 * nparts)

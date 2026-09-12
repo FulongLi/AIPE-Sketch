@@ -92,15 +92,17 @@ def boost():
     n.connect('DC_NEG', 'V1.n', 'Q1.s', 'C1.b', 'R1.b', 'GND1.t')
     n.connect('GATE', 'Q1.g', 'G1.t')
 
-    # Topologically a leg -- D1 above the node, Q1 below -- but drawn the
-    # conventional way: L and D in series along the rail, switch below.
+    # A boost is not a half bridge.  L1, the switching node and D1 stay on
+    # one horizontal main path, and Q1 hangs from that node down to the
+    # return rail -- centred in its own branch, not dropped into a bridge row.
     plan = LayoutPlan([
         Group('input_dc_link', 'source', [
             Slot(Item('V1', ('dc_pos', 'dc_neg')))]),
         Group('conversion', 'conversion', [
             Slot(Item('L1', 'dc_pos', rot=-90)),
-            Slot(Item('Q1', 'low'), Item('GND1', 'dc_neg'),
-                 Item('G1', 'gate_low', dx=GATE_DX)),
+            Slot(Item('Q1', ('dc_pos', 'dc_neg')),
+                 Item('GND1', 'dc_neg'),
+                 Item('G1', ('dc_pos', 'dc_neg'), dy=1, dx=GATE_DX)),
             Slot(Item('D1', 'dc_pos', rot=90))]),
         Group('output', 'filter', [
             Slot(Item('C1', ('dc_pos', 'dc_neg'))),

@@ -55,12 +55,57 @@ All six are regression tests. Current scores:
 | DAB | 100 | 100 | 98 | 98 | 100 | **99** |
 | LLC resonant | 100 | 100 | 94 | 88 | 100 | **97** |
 
+Boost gaps after the motif change: V1→L1 6.0 G (group boundary), L1→Q1 3.5,
+Q1→D1 4.5 (adjacent), D1→C1 2.0, C1→R1 2.5 (output chain) -- the variation
+tracks the motif hierarchy rather than being arbitrary.
+
 Every drawing also answers the fifteen whole-drawing questions cleanly
 (`python3 build.py --checks`).
 
 The crossings in the last two are the topological minimum: three phase outputs
 reaching a shared column must pass two legs, one leg and none; the DAB's two
 bridges each reach across one leg to the transformer.
+
+## Topology motifs
+
+A switching device is not automatically half of a bridge.
+`analysis.classify_motifs` names the local electrical motif, and placement
+follows it:
+
+| motif | how it is recognised | placement |
+|---|---|---|
+| `bridge_leg` | the high device hangs from the positive supply | stacked, midpoint between |
+| `shunt_switch` | low port on the reference, high port on a main-path node | centred in its own branch |
+| `series_power_path` | passives joined two-at-a-time in series | one horizontal line |
+| `parallel_output_block` | two or more shunt parts sharing the same net pair | one compact block |
+
+```
+boost          shunts=['Q1']            bridge_legs=[]
+buck           shunts=[]                bridge_legs=['Q1/D1']
+half_bridge    shunts=[]                bridge_legs=['Q1/Q2']
+```
+
+A boost is **not** a half bridge. Its main path stays horizontal and Q1 hangs
+from the switching node down to the return rail:
+
+```
+Vin ─── L1 ─── ● ─── D1 ─── output
+               │
+               Q1
+               │
+              GND
+```
+
+`shunt_branch_balance` scores `|L_top - L_bottom| / (L_top + L_bottom)` for
+every shunt, and `shunt_verticality` fails any shunt whose power terminals are
+not vertically aligned. Before this, the boost scored a **perfect 1.0
+imbalance** -- 2.00 cells above the switch and 0.00 below, because bridge-leg
+geometry dropped it onto the rail. It is now 1.0 / 1.0, error 0.
+
+> The buck's freewheel diode stays a **bridge-leg member, not a shunt**: a buck
+> *is* a half bridge with the low-side switch replaced by a diode, and its
+> anode belongs on the rail. Rebalancing it would lift it off the rail, which
+> is not how a buck is drawn.
 
 ## Main power path
 

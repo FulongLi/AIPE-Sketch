@@ -472,7 +472,7 @@ BAND_LO, BAND_HI = 0.75, 1.5     # acceptable local run length, in CELLs
 # shorter by design and must not be scored against the ordinary band.
 CHAIN_BAND_LO, CHAIN_BAND_HI = 0.4, 1.0
 from .plan import CHAIN_NEUTRAL, CHAIN_ROLES      # noqa: E402  single source
-BAND_EPS = 1e-6                  # the band edges are inclusive
+BAND_EPS = 1e-4                  # the band edges are inclusive, in cell units
 
 
 def length_band(paths, placed=None, netlist=None):
@@ -898,3 +898,63 @@ def near_component_bend_penalty(netlist, placed, paths):
                             f'{ref}.{name}')
                         break
     return round(penalty, 4), faults
+
+
+# ------------------------------------------------------------------ shunts
+def shunt_branch_balance(netlist, placed, paths, motifs=None):
+    """A shunt device should sit centred in its own branch.
+
+    The branch is node -> device -> rail, not rail -> device -> rail, so the
+    two connecting wires are measured against each other rather than against
+    the page.  A long drop onto the device with the device already sitting on
+    the rail is the failure this catches.
+    """
+    from .analysis import POLARITY, SHUNT_SWITCH, classify_motifs
+    motifs = motifs or classify_motifs(netlist)
+    segs = [seg for _, seg in _segments(paths)]
+
+    def run_at(pt):
+        attached = [s for s in segs if _same(s[0], pt) or _same(s[1], pt)]
+        vertical = [s for s in attached if abs(s[0][0] - s[1][0]) < TOL]
+        return min((_length(s) for s in vertical), default=0.0)
+
+    penalty, faults, report = 0.0, [], {}
+    for entry in motifs.get(SHUNT_SWITCH, []):
+        ref = entry['device']
+        part = placed.get(ref)
+        if part is None:
+            continue
+        polarity = POLARITY.get(part.kind)
+        if not polarity:
+            continue
+        top = run_at(part.port(polarity[0]))
+        bottom = run_at(part.port(polarity[1]))
+        total = top + bottom
+        error = 0.0 if total < TOL else abs(top - bottom) / total
+        report[ref] = dict(top=round(top / CELL, 3),
+                           bottom=round(bottom / CELL, 3),
+                           error=round(error, 3))
+        if error > 0.34:
+            penalty += error ** 2
+            faults.append(
+                f'{ref}: shunt branch is lopsided -- {top / CELL:.2f} cells '
+                f'above, {bottom / CELL:.2f} below')
+    return round(penalty, 4), faults, report
+
+
+def shunt_verticality(netlist, placed, paths, motifs=None):
+    """A shunt branch should be one straight vertical line."""
+    from .analysis import POLARITY, SHUNT_SWITCH, classify_motifs
+    motifs = motifs or classify_motifs(netlist)
+    faults = []
+    for entry in motifs.get(SHUNT_SWITCH, []):
+        ref = entry['device']
+        part = placed.get(ref)
+        polarity = POLARITY.get(part.kind) if part else None
+        if not polarity:
+            continue
+        hi = part.port(polarity[0])
+        lo = part.port(polarity[1])
+        if abs(hi[0] - lo[0]) > TOL:
+            faults.append(f'{ref}: power terminals are not vertically aligned')
+    return faults

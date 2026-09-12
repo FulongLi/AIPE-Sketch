@@ -195,3 +195,66 @@ def analyse(netlist):
         'repeated': repeated_classes(netlist),
         'groups': functional_groups(netlist),
     }
+
+
+# ------------------------------------------------------------------ motifs
+BRIDGE_LEG = 'bridge_leg'
+SHUNT_SWITCH = 'shunt_switch'
+SERIES_POWER_PATH = 'series_power_path'
+PARALLEL_OUTPUT_BLOCK = 'parallel_output_block'
+
+
+def supply_nets(netlist):
+    """(positive supply, reference) as named by the source and the ground."""
+    positive = reference = None
+    for net, members in netlist.nets.items():
+        for ref, port in members:
+            kind = netlist.components[ref].kind
+            if kind in ('vsource', 'isource', 'battery') and port == 'p':
+                positive = positive or net
+            if kind == 'gnd':
+                reference = reference or net
+    return positive, reference
+
+
+def classify_motifs(netlist):
+    """Name the local electrical motif each device belongs to.
+
+    A switching device is not automatically half of a bridge.  A device
+    hanging from a main-path node down to the reference is a shunt, and must
+    be placed by balancing its own branch rather than by bridge geometry.
+    """
+    positive, reference = supply_nets(netlist)
+    legs = find_legs(netlist)
+    motifs = {BRIDGE_LEG: [], SHUNT_SWITCH: [], PARALLEL_OUTPUT_BLOCK: []}
+
+    for leg in legs:
+        # a bridge leg hangs its high device from the positive supply; a
+        # boost's diode sits on the main path instead, and is not one
+        if positive is not None and leg.top_net == positive:
+            motifs[BRIDGE_LEG].append(
+                {'high': leg.high, 'low': leg.low, 'mid': leg.mid})
+
+    in_bridge = {r for m in motifs[BRIDGE_LEG] for r in (m['high'], m['low'])}
+    for ref, comp in sorted(netlist.components.items()):
+        polarity = POLARITY.get(comp.kind)
+        if not polarity or ref in in_bridge:
+            continue
+        high_net = netlist.net_of(ref, polarity[0])
+        low_net = netlist.net_of(ref, polarity[1])
+        if low_net == reference and high_net != reference:
+            motifs[SHUNT_SWITCH].append(
+                {'device': ref, 'node': high_net, 'rail': low_net})
+
+    by_pair = {}
+    for ref in sorted(netlist.components):
+        nets = tuple(sorted({n for n, _ in netlist.ports_of(ref)}))
+        if len(nets) == 2:
+            by_pair.setdefault(nets, []).append(ref)
+    for nets, refs in sorted(by_pair.items()):
+        shunts = [r for r in refs
+                  if netlist.components[r].kind in ('cap', 'cap_pol', 'res')]
+        if len(shunts) >= 2:
+            motifs[PARALLEL_OUTPUT_BLOCK].append(
+                {'members': shunts, 'nets': list(nets)})
+    return motifs

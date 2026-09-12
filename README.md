@@ -37,7 +37,7 @@ and `placement.py` is the only module that invents a coordinate.
 ## Usage
 
 ```bash
-python3 build.py                    # all six reference topologies
+python3 build.py                    # all reference and synthetic circuits
 python3 build.py buck dab           # a subset
 python3 build.py --plan buck        # structure and plan, no drawing
 python3 -m unittest discover -s tests
@@ -47,26 +47,47 @@ python3 -m unittest discover -s tests
 
 All six are regression tests. Current scores:
 
-| topology | conn | sym | rhythm | clearance | conventions | overall |
-|---|---|---|---|---|---|---|
-| buck | 100 | 100 | 93 | 100 | 100 | **99** |
-| boost | 100 | 100 | 100 | 100 | 100 | **100** |
-| half bridge | 100 | 100 | 100 | 100 | 100 | **100** |
-| full bridge | 100 | 100 | 95 | 97 | 100 | **97** |
-| three-phase 2-level | 100 | 100 | 94 | 97 | 100 | **98** |
-| DAB | 100 | 100 | 98 | 98 | 100 | **99** |
-| LLC resonant | 100 | 100 | 94 | 88 | 100 | **97** |
+| circuit | kind | overall |
+|---|---|---|
+| buck | converter | **97** |
+| boost | converter | **99** |
+| half bridge | converter | **99** |
+| full bridge | converter | **99** |
+| three phase inverter | converter | **97** |
+| dab | converter | **97** |
+| llc resonant | converter | **96** |
+| series rlc | synthetic motif | **99** |
+| twin shunt branches | synthetic motif | **93** |
+| three repeated legs | synthetic motif | **97** |
+| parallel rc block | synthetic motif | **98** |
+| transformer between networks | synthetic motif | **94** |
 
-Boost gaps after the motif change: V1→L1 6.0 G (group boundary), L1→Q1 3.5,
-Q1→D1 4.5 (adjacent), D1→C1 2.0, C1→R1 2.5 (output chain) -- the variation
-tracks the motif hierarchy rather than being arbitrary.
-
-Every drawing also answers the fifteen whole-drawing questions cleanly
+Converters are regression cases; the synthetic circuits carry no converter
+semantics and exist to prove the rules work on structure alone. Every drawing
+answers all twenty-two whole-drawing questions cleanly
 (`python3 build.py --checks`).
 
 The crossings in the last two are the topological minimum: three phase outputs
 reaching a shared column must pass two legs, one leg and none; the DAB's two
 bridges each reach across one leg to the transformer.
+
+## Spacing comes from relationships, not groups
+
+Gap is decided for each **adjacent pair** from how the two are connected,
+because a group may hold a series element feeding a parallel block and
+classifying the whole group gives neither the right spacing:
+
+| relationship | gap |
+|---|---|
+| joined by a two-terminal net (series) | 2 G |
+| shunted across the same node pair (parallel) | 2 G |
+| sharing a node (directly connected) | 4 G |
+| unrelated, across a functional boundary | 6 G |
+| legs of one bridge | 6 G, uniform pitch |
+
+An electrical relationship crossing a functional boundary overrides the
+boundary. Only a bridge keeps a uniform pitch, because its legs must stay
+evenly spaced.
 
 ## Topology motifs
 
@@ -164,7 +185,7 @@ from it:
 Slot pitch is derived from the group's own widest body, so narrow passives sit
 close together while switching devices keep a full cell apart. Because every
 slot of a repeated structure holds the same devices, repeated structures still
-come out evenly spaced. Measured body-to-body gaps across all six topologies
+come out evenly spaced. Measured body-to-body gaps across the catalogue
 are 1.00–1.12 CELL.
 
 The sheet is fitted to its content and the whole drawing is shifted into the
@@ -367,7 +388,7 @@ kind         source    symbol      ports
 nmos         library   g4046       d,g,s
 igbt         library   g13197      c,e,g
 cap          library   g8210       a,b
-transformer  compound  -           p1,p2,s1,s2
+transformer  cleaned_library  g7138  p1,p2,s1,s2
 terminal     custom    -           t
 
 13 from the library, 1 assembled, 1 custom
@@ -446,7 +467,7 @@ registry therefore holds both, and the engine picks by orientation.
 
 Side and offset come from the registry per semantic role, so equivalent
 components place their labels at identical distances — `label_distance`
-irregularity is 0 across all six topologies. A component laid on its side (a
+irregularity is 0 across the catalogue. A component laid on its side (a
 horizontal L/C/R/D) is labelled above, per convention.
 
 Every label carries a **clearance margin**, not merely a non-overlap
@@ -621,9 +642,6 @@ output port at all.
 * **Label boxes are estimated, not measured** — no font metrics available.
   Deliberately pessimistic (0.62 em/glyph, 1.15 em line height, 0.35 mm pad),
   but it is the weakest input to the collision checker.
-* **Rule 19 (resonant tank) is untested.** Nothing in the catalogue has a
-  series resonant path, so the "one horizontal centreline with comparable
-  spacing" rule has no example behind it.
 * **The scale threshold of four is a judgement call**, not a derived number.
 * **The extracted library is not wired into rendering yet.** Milestone one was
   extraction; `parts.Registry` still parses the master directly. Pointing it at

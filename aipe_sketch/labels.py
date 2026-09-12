@@ -11,8 +11,9 @@ circuit; this decides where its labels go.
 import math
 
 from . import config, router
-from .config import (GLYPH_W, LABEL_FALLBACK, LABEL_PAD_X_MM, LABEL_PAD_Y_MM,
-                     LABEL_SIZE, LINE_H, MIN_STACK_OFFSET_MM, SUBSCRIPT)
+from .config import (GLYPH_W, LABEL_FALLBACK, LABEL_OWN_CLEARANCE_MM,
+                     LABEL_PAD_X_MM, LABEL_PAD_Y_MM, LABEL_SIZE, LINE_H,
+                     MIN_STACK_OFFSET_MM, SUBSCRIPT)
 from .router import TOL
 
 OPPOSITE = {'left': 'right', 'right': 'left',
@@ -70,11 +71,18 @@ def rotated_side(side, rot, mirror=False):
 
 
 def anchor_for(bbox, side, offset):
-    """Where the text sits, and how it is anchored, for one side."""
+    """Where the text sits, and how it is anchored, for one side.
+
+    The offset is floored so the label's keep-out box clears its own body by
+    a visible margin: the pad reaches back toward the component, so a raw
+    offset equal to the pad would leave the two boxes touching.
+    """
     x0, y0, x1, y1 = bbox
     cy = (y0 + y1) / 2
     if side in ('above', 'below'):
         offset = max(offset, MIN_STACK_OFFSET_MM)
+    else:
+        offset = max(offset, LABEL_PAD_X_MM + LABEL_OWN_CLEARANCE_MM)
     if side == 'right':
         return x1 + offset, cy + 0.9, 'start'
     if side == 'left':
@@ -87,6 +95,13 @@ def anchor_for(bbox, side, offset):
 def overlaps(a, b):
     return (min(a[2], b[2]) - max(a[0], b[0]) > TOL and
             min(a[3], b[3]) - max(a[1], b[1]) > TOL)
+
+
+def _clear_by(a, b):
+    """Shortest gap between two boxes; 0 when they touch or overlap."""
+    dx = max(a[0] - b[2], b[0] - a[2], 0.0)
+    dy = max(a[1] - b[3], b[1] - a[3], 0.0)
+    return math.hypot(dx, dy)
 
 
 def _box_around(point, radius):
@@ -129,6 +144,13 @@ class LabelPlacer:
     def blockers(self, part, box):
         """What, if anything, this label box runs into."""
         hits = []
+        # the owning component is checked like any other, and additionally
+        # must keep a visible gap -- a label touching its own symbol reads
+        # as part of it
+        if overlaps(box, part.bbox):
+            hits.append(f'its own body {part.ref}')
+        elif _clear_by(box, part.bbox) < LABEL_OWN_CLEARANCE_MM - TOL:
+            hits.append(f'too close to its own body {part.ref}')
         for other in self.bodies:
             if other is part:
                 continue
@@ -171,11 +193,7 @@ class LabelPlacer:
         score += max(0.0, config.CELL_MM - clear) / config.CELL_MM * 8.0
         return score
 
-    @staticmethod
-    def _clearance(a, b):
-        dx = max(a[0] - b[2], b[0] - a[2], 0.0)
-        dy = max(a[1] - b[3], b[1] - a[3], 0.0)
-        return math.hypot(dx, dy)
+    _clearance = staticmethod(_clear_by)
 
     # -- placement ----------------------------------------------------
     def place(self, part):

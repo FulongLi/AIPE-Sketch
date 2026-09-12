@@ -135,11 +135,27 @@ def _linked_passives(left_slot, right_slot, netlist, specs):
         return False
     if any(spec.role not in CHAIN_ROLES for _, spec, _ in right):
         return False
-    for a, _, _ in left:
-        for b, _, _ in right:
-            if set(n for n, _ in netlist.ports_of(a)) & \
-                    set(n for n, _ in netlist.ports_of(b)):
-                return True
+    return any(_series_link(netlist, specs, a, b)
+               for a, _, _ in left for b, _, _ in right)
+
+
+def _series_link(netlist, specs, a, b):
+    """True when a joins b through a genuine two-terminal net.
+
+    Merely sharing a net is not enough: a source and its DC-link capacitor
+    share both rails but sit in parallel, and packing them like a series
+    chain is wrong.
+    """
+    from .plan import CHAIN_NEUTRAL
+    shared = {n for n, _ in netlist.ports_of(a)} & \
+             {n for n, _ in netlist.ports_of(b)}
+    for net in shared:
+        real = [r for r, _ in netlist.nets[net]
+                if r in netlist.components
+                and specs[netlist.components[r].kind].role
+                not in CHAIN_NEUTRAL]
+        if len(real) == 2:
+            return True
     return False
 
 
@@ -161,38 +177,87 @@ def _is_series_chain(group, netlist, specs):
             if spec.role not in CHAIN_ROLES:
                 return False
         refs.append([ref for ref, _, _ in bodies])
-    # consecutive slots must actually be wired to each other
+    # consecutive slots must be joined in series, not merely share a net
     for left, right in zip(refs, refs[1:]):
-        shared = False
-        for a in left:
-            for b in right:
-                if set(n for n, _ in netlist.ports_of(a)) & \
-                        set(n for n, _ in netlist.ports_of(b)):
-                    shared = True
-        if not shared:
+        if not any(_series_link(netlist, specs, a, b)
+                   for a in left for b in right):
             return False
     return True
 
 
-def _natural_pitch(group, netlist, specs, opts):
-    """Centre-to-centre for a group: its widest body plus the right gap.
+def _shared_nets(netlist, refs):
+    sets = [{n for n, _ in netlist.ports_of(r)} for r in refs]
+    return set.intersection(*sets) if sets else set()
 
-    The gap is chosen by what the group is -- a bridge, a series passive
-    chain, or ordinary neighbours -- so an inductor does not inherit the
-    spacing of a switching leg merely because its cell is large.
+
+def _is_parallel_block(group, netlist, specs):
+    """True when every slot holds shunt parts across the same node pair.
+
+    Cout || Rload is one visual block, and so is any other parallel shunt
+    group: same top rail, same bottom rail, packed close together.
+    """
+    from .plan import CHAIN_NEUTRAL
+    members = []
+    for slot in group.slots:
+        bodies = _chain_bodies(slot, netlist, specs)
+        if len(bodies) != 1:
+            return False
+        members.append(bodies[0][0])
+    if len(members) < 2:
+        return False
+    if any(specs[netlist.components[r].kind].role in CHAIN_NEUTRAL
+           for r in members):
+        return False
+    shared = _shared_nets(netlist, members)
+    return len(shared) >= 2
+
+
+def _parallel_across(left_group, right_group, netlist, specs):
+    """True when the facing slots hold parts shunted across the same pair."""
+    left = _chain_bodies(left_group.slots[-1], netlist, specs)
+    right = _chain_bodies(right_group.slots[0], netlist, specs)
+    if not left or not right:
+        return False
+    refs = [r for r, _, _ in left] + [r for r, _, _ in right]
+    return len(_shared_nets(netlist, refs)) >= 2
+
+
+def pair_gap(left_slot, right_slot, netlist, specs, opts, default=None):
+    """The gap two neighbouring slots should keep, from their relationship.
+
+    Decided per adjacent pair rather than per group: a group may hold a
+    series element feeding a parallel block, and classifying the whole group
+    gives neither of them the right spacing.  This is the one place the
+    spacing vocabulary is chosen.
+    """
+    left = _chain_bodies(left_slot, netlist, specs)
+    right = _chain_bodies(right_slot, netlist, specs)
+    if not left or not right:
+        return default if default is not None else opts['gap_adjacent']
+    if any(_series_link(netlist, specs, a, b)
+           for a, _, _ in left for b, _, _ in right):
+        return opts['gap_series']
+    refs = [r for r, _, _ in left] + [r for r, _, _ in right]
+    shared = _shared_nets(netlist, refs)
+    if len(shared) >= 2:
+        return opts['gap_parallel']            # shunted across one node pair
+    if shared:
+        return opts['gap_adjacent']            # directly connected
+    return default if default is not None else opts['gap_adjacent']
+
+
+def _natural_pitch(group, netlist, specs, opts):
+    """Uniform centre-to-centre pitch, for repeated structures.
+
+    A bridge's legs must stay evenly spaced, so they keep one pitch rather
+    than being spaced pairwise.
     """
     widths = [_drawn_width(spec, item)
               for slot in group.slots
               for _, spec, item in _bodies(slot, netlist, specs)]
     if not widths:
         return opts['slot_pitch']
-    if group.role == 'bridge':
-        gap = opts['gap_bridge']
-    elif _is_series_chain(group, netlist, specs):
-        gap = opts['gap_series']
-    else:
-        gap = opts['gap_adjacent']
-    return max(2, math.ceil(max(widths) - 1e-6)) + gap
+    return max(2, math.ceil(max(widths) - 1e-6)) + opts['gap_bridge']
 
 
 def place(plan, netlist, specs):
@@ -206,15 +271,13 @@ def place(plan, netlist, specs):
     previous_group = None
     for gi, group in enumerate(plan.groups):
         if gi:
-            if group.gap_before is not None:
-                gap = group.gap_before
-            elif _linked_passives(previous_group.slots[-1], group.slots[0],
-                                  netlist, specs):
-                # the chain continues across the boundary, so it keeps
-                # chain spacing rather than being pushed apart
-                gap = opts['gap_series']
-            else:
-                gap = opts['group_gap']
+            # An electrical relationship crossing a functional boundary
+            # overrides the boundary: directly connected components stay
+            # close even when they belong to different blocks.
+            gap = (group.gap_before if group.gap_before is not None
+                   else pair_gap(previous_group.slots[-1], group.slots[0],
+                                 netlist, specs, opts,
+                                 default=opts['group_gap']))
             # measured edge to edge, so the gap means the same thing whatever
             # sits on either side of the boundary
             # rounded up so the boundary lands on the grid and the gap is
@@ -226,22 +289,23 @@ def place(plan, netlist, specs):
             pitch = _natural_pitch(group, netlist, specs, opts)
 
         # A repeated structure keeps one pitch so its members stay evenly
-        # spaced.  A series chain of differing widths instead keeps one
-        # *gap*, which is what makes it read as a single continuous run.
-        chain = _is_series_chain(group, netlist, specs)
-        gap = opts['gap_series'] if chain else None
+        # spaced.  Everything else is spaced pairwise, by relationship.
+        uniform = group.role == 'bridge'
         columns, at = [], cursor
         for si, slot in enumerate(group.slots):
             if si == 0:
                 columns.append(at)
-            elif chain:
-                at = math.ceil(at + _slot_half_width(group.slots[si - 1],
-                                                     netlist, specs)
-                               + gap
-                               + _slot_half_width(slot, netlist, specs))
+            elif uniform:
+                at = cursor + si * pitch
                 columns.append(at)
             else:
-                at = cursor + si * pitch
+                gap = pair_gap(group.slots[si - 1], slot,
+                               netlist, specs, opts)
+                at = math.ceil(at
+                               + _slot_half_width(group.slots[si - 1],
+                                                  netlist, specs)
+                               + gap
+                               + _slot_half_width(slot, netlist, specs))
                 columns.append(at)
 
         first = cursor
@@ -314,12 +378,14 @@ def relax_series_margins(plan, placed, netlist, specs):
 
     for previous, group in zip(plan.groups, plan.groups[1:]):
         if _linked_passives(previous.slots[-1], group.slots[0],
-                            netlist, specs):
+                            netlist, specs) or \
+                _parallel_across(previous, group, netlist, specs):
             _relax(_slot_parts(previous.slots[-1]),
                    _slot_parts(group.slots[0]))
 
     for group in plan.groups:
-        if not _is_series_chain(group, netlist, specs):
+        if not (_is_series_chain(group, netlist, specs)
+                or _is_parallel_block(group, netlist, specs)):
             continue
         rows = []
         for slot in group.slots:

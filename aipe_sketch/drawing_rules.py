@@ -368,6 +368,11 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
         # returning to a rail drops onto it vertically, which is correct.
         series_ports = set()
         for net, members in netlist.nets.items():
+            # a net carrying a ground glyph is a rail return, however few
+            # components hang off it, and is entered vertically
+            if any(placed[r].spec.role == 'reference'
+                   for r, _ in members if r in placed):
+                continue
             real = [r for r, _ in members
                     if r in placed
                     and placed[r].spec.role not in CHAIN_NEUTRAL]
@@ -400,10 +405,10 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
         '4 half-bridge midpoints straight': ok(raw['midpoint_detour'] == 0),
         '5 bridge midpoints direct and symmetric': ok(
             raw['midpoint_detour'] == 0 and raw['symmetry'] == 0),
-        '6 external ports terminated': ok(
-            bool(terminals),
-            f'{len(terminals)} open circle(s): {len(power_ports)} power, '
-            f'{len(gate_ports)} control'),
+        '6 external ports terminated': (
+            ok(True, f'{len(terminals)} open circle(s): '
+                     f'{len(power_ports)} power, {len(gate_ports)} control')
+            if terminals else ('N/A', 'the circuit exposes no interfaces')),
         '7 sources drawn conventionally': ok(
             all(placed[r].spec.decor for r in sources) if sources else True,
             f'{len(sources)} source(s)'),
@@ -413,7 +418,9 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
         '9 labels consistently positioned': ok(raw['label_side'] == 0),
         '10 transformer compactly connected': (
             ok(tx_ok, tx_note) if has_tx else ('N/A', 'no transformer')),
-        '11 no unnecessary bends': ok(raw['bend'] == 0, f"{raw['bend']} bend(s)"),
+        '11 no unnecessary bends': ok(
+            raw['avoidable_bend'] == 0,
+            f"{raw['bend']} bend(s), {raw['avoidable_bend']} avoidable"),
         '12 no abnormally long local wires': ok(
             raw['local_spread'] < 1.0, f"spread {raw['local_spread']}"),
         '13 labels close, no overlap': ok(raw['label_overlap'] == 0),
@@ -699,9 +706,15 @@ def redundant_annotation(placed, netlist, notes=()):
         net = netlist.net_of(ref, 't')
         if net is None:
             continue
+        # "already ends in a load" means a component shunted across the
+        # output pair, not merely something whose kind is a resistor: a
+        # series resistor is not a load.
+        from .analysis import PARALLEL_OUTPUT_BLOCK, classify_motifs
+        blocks = classify_motifs(netlist).get(PARALLEL_OUTPUT_BLOCK, [])
+        shunted = {m for block in blocks if net in block['nets']
+                   for m in block['members']}
         companions = [r for r, _ in netlist.nets[net] if r != ref]
-        roles = {placed[r].spec.role for r in companions if r in placed}
-        if 'load' in roles:
+        if shunted & set(companions):
             faults.append(
                 f'{ref}: the output already ends in a load network, so an '
                 f'output terminal adds nothing')
@@ -802,6 +815,14 @@ def series_chains(netlist, placed):
     return chains
 
 
+def _faces_sideways(part, port):
+    """True when a port sits on the left or right face as drawn."""
+    px, py = part.port(port)
+    cx = (part.bbox[0] + part.bbox[2]) / 2
+    cy = (part.bbox[1] + part.bbox[3]) / 2
+    return abs(px - cx) >= abs(py - cy)
+
+
 def centreline_deviation(netlist, placed):
     """Consecutive components on one power chain should stay collinear.
 
@@ -820,7 +841,14 @@ def centreline_deviation(netlist, placed):
                     break
             if shared is None:
                 continue
-            ys = [placed[r].port(p)[1] for r, p in shared if r in placed]
+            ports = [(r, p) for r, p in shared if r in placed]
+            # Only ports facing sideways belong to the horizontal path.  A
+            # shunt element ending a chain is entered from above, and that
+            # step is structural rather than a routing defect.  Measured from
+            # the placed geometry so it holds however the part was rotated.
+            if not all(_faces_sideways(placed[r], p) for r, p in ports):
+                continue
+            ys = [placed[r].port(p)[1] for r, p in ports]
             drop = (max(ys) - min(ys)) / CELL
             if drop > 0.05:
                 penalty += drop ** 2
@@ -925,4 +953,39 @@ def shunt_verticality(netlist, placed, paths, motifs=None):
         lo = part.port(polarity[1])
         if abs(hi[0] - lo[0]) > TOL:
             faults.append(f'{ref}: power terminals are not vertically aligned')
+    return faults
+
+
+# ------------------------------------------------------------------ facing
+def port_facing(netlist, placed):
+    """Series-connected ports should face each other.
+
+    When two components are joined by a two-terminal net, the left one's
+    port should be on its right side and vice versa.  If a part is rotated
+    the other way its wire has to double back across the body, which shows
+    up later as a mysterious short.  Reporting it here names the cause.
+    """
+    faults = []
+    for net, members in netlist.nets.items():
+        real = [(r, p) for r, p in members
+                if r in placed
+                and placed[r].spec.role not in CHAIN_NEUTRAL]
+        if len(real) != 2:
+            continue
+        (ref_a, port_a), (ref_b, port_b) = real
+        a, b = placed[ref_a], placed[ref_b]
+        if abs(a.x - b.x) < TOL:
+            continue                                   # stacked, not in a row
+        left, lp, right, rp = ((a, port_a, b, port_b) if a.x < b.x
+                               else (b, port_b, a, port_a))
+        lx = left.port(lp)[0] - (left.bbox[0] + left.bbox[2]) / 2
+        rx = right.port(rp)[0] - (right.bbox[0] + right.bbox[2]) / 2
+        if lx < -TOL:
+            faults.append(
+                f'net {net}: {left.ref}.{lp} faces left, away from '
+                f'{right.ref} -- check its rotation')
+        if rx > TOL:
+            faults.append(
+                f'net {net}: {right.ref}.{rp} faces right, away from '
+                f'{left.ref} -- check its rotation')
     return faults

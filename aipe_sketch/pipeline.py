@@ -282,8 +282,13 @@ class Schematic:
 
         faults = validate.check(self.netlist, self.placed, self.paths)
         if faults:
-            raise RuntimeError('CONNECTIVITY FAULT -- drawing does not match '
-                               'the netlist:\n  ' + '\n  '.join(faults))
+            from . import drawing_rules
+            hints = drawing_rules.port_facing(self.netlist, self.placed)
+            message = ('CONNECTIVITY FAULT -- drawing does not match the '
+                       'netlist:\n  ' + '\n  '.join(faults))
+            if hints:
+                message += ('\nprobable cause:\n  ' + '\n  '.join(hints))
+            raise RuntimeError(message)
         if not card.acceptable and not force:
             raise RuntimeError('layout rejected\n' + str(card))
 

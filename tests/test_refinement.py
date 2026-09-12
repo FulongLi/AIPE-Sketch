@@ -285,15 +285,30 @@ class TestLabelClearance(unittest.TestCase):
                                  and box[2] > bx0 and box[0] < bx1,
                                  f'{name}/{ref} label overlaps its own body')
 
-    def test_horizontal_passives_are_labelled_above(self):
+    def test_horizontal_passives_prefer_above(self):
+        """Preferred, not absolute: collision avoidance wins (rule Z)."""
+        from aipe_sketch.labels import (LabelPlacer, anchor_for, text_bbox)
         for name in NAMES:
             sch, _, _, _ = built(name)
             for ref, part in sch.placed.items():
-                if part.rot % 180 and part.spec.orientation == 'vertical':
-                    self.assertEqual(part.label_side, 'above',
-                                     f'{name}/{ref}')
-
-
+                if not (part.rot % 180 and part.label):
+                    continue
+                if part.spec.role not in ('magnetic', 'filter', 'load',
+                                          'rectifier'):
+                    continue
+                self.assertIn(part.label_side, ('above', 'below'),
+                              f'{name}/{ref} left the vertical sides')
+                if part.label_side == 'above':
+                    continue
+                # a fallback is only acceptable if 'above' was truly blocked
+                placer = LabelPlacer(sch.placed, sch.paths)
+                x, y, anchor = anchor_for(part.bbox, 'above',
+                                          part.label_offset)
+                blocked = placer.blockers(part,
+                                          text_bbox(x, y, part.label,
+                                                    part.sub, anchor))
+                self.assertTrue(blocked,
+                                f'{name}/{ref} avoided "above" for no reason')
 class TestTransformer(unittest.TestCase):
     """Rules 6, 7, 17, 19: one compact device with fixed internal geometry."""
 

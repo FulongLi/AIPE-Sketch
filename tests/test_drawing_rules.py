@@ -105,15 +105,22 @@ class TestLocalScale(unittest.TestCase):
         self.assertLess(GAP_ADJACENT, GAP_BRIDGE_LEG)
         self.assertLessEqual(GAP_BRIDGE_LEG, GAP_GROUP)
 
-    def test_a_measured_chain_is_compact(self):
+    def test_local_gaps_follow_the_relationship(self):
+        """Spacing comes from how a pair is connected, not from its group.
+
+        L1 feeds a node that branches to both C2 and R1, so it is directly
+        connected rather than in series -- the adjacent scale.  C2 and R1 are
+        shunted across the same node pair, so they get the parallel scale.
+        """
         from aipe_sketch.pins import COARSE as G
+        from aipe_sketch.config import GAP_ADJACENT, GAP_PARALLEL_BLOCK
         sch, _, _, _ = built('buck')
-        pairs = (('L1', 'C2'), ('C2', 'R1'))
-        for left, right in pairs:
+        for left, right, ceiling in (('L1', 'C2', GAP_ADJACENT + 0.5),
+                                     ('C2', 'R1', GAP_PARALLEL_BLOCK + 1.0)):
             gap = (sch.placed[right].bbox[0] -
                    sch.placed[left].bbox[2]) / G
-            self.assertLessEqual(gap, 3.0,
-                                 f'{left}->{right} is {gap:.1f}G, not compact')
+            self.assertLessEqual(gap, ceiling,
+                                 f'{left}->{right} is {gap:.1f}G')
 
     def test_a_component_has_no_wildly_uneven_local_wires(self):
         for name in NAMES:

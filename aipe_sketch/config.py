@@ -23,6 +23,7 @@ HALF_SYMBOL_MM = H
 # Gaps between bodies, edge to edge, in grid units.  They depend on how two
 # neighbours are related rather than on one global scale.
 GAP_SERIES_PASSIVE = 2       # C -> L -> C along one series path
+GAP_PARALLEL_BLOCK = 2       # Cout || Rload and any other shunt block
 GAP_ADJACENT = 4             # ordinary neighbouring components
 GAP_BRIDGE_LEG = 6           # between the legs of one bridge, and wide
                              # enough that a load slung between two legs
@@ -34,8 +35,11 @@ START_COL = 6                # first column, in grid units
 
 # Roles that may form a compact series chain.  A rectifier counts: a
 # transformer should not sit far from the rectifier that follows it.
+# A source starts a series path -- 'source -> L -> C -> transformer' is the
+# canonical example -- so it is chain-eligible too.  Where a source feeds a
+# rail instead, that net has more than two members and no chain is detected.
 CHAIN_ROLES = frozenset({'filter', 'load', 'magnetic', 'isolation',
-                         'rectifier'})
+                         'rectifier', 'source'})
 # Neutral riders -- a ground glyph or an interface marker attached to a node
 # is not part of the power path and must not disqualify a chain.
 CHAIN_NEUTRAL = frozenset({'reference', 'terminal'})
@@ -54,10 +58,15 @@ SUBSCRIPT = 0.72             # subscript size relative to its parent
 LABEL_PAD_X_MM = 0.5 * G
 LABEL_PAD_Y_MM = 0.35 * G
 
+# A label must keep visible daylight from its own component -- touching is
+# not enough.  This is enforced by the engine, not by trusting each offset.
+LABEL_OWN_CLEARANCE_MM = 0.35 * G
+
 # An 'above' or 'below' label is anchored by its baseline, so its box still
 # reaches past that by the descent plus the pad.  Any smaller offset would
 # put a label's keep-out inside its own body.
-MIN_STACK_OFFSET_MM = 0.25 * LINE_H * LABEL_SIZE + LABEL_PAD_Y_MM + 0.2
+MIN_STACK_OFFSET_MM = (0.25 * LINE_H * LABEL_SIZE + LABEL_PAD_Y_MM
+                       + LABEL_OWN_CLEARANCE_MM)
 
 # Preferred label side and offset per semantic role.
 #

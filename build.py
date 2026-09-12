@@ -9,7 +9,12 @@ import os
 import sys
 
 from aipe_sketch.pipeline import Schematic
-from aipe_sketch.topologies import CATALOGUE
+from aipe_sketch.synthetic import SYNTHETIC
+from aipe_sketch.topologies import CATALOGUE as CONVERTERS
+
+# converters are regression cases; the synthetic circuits test the grammar
+# on structure alone, with no converter semantics attached
+CATALOGUE = dict(CONVERTERS, **SYNTHETIC)
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 from aipe_sketch.paths import MASTER as SRC

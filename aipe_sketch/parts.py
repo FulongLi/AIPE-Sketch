@@ -158,6 +158,10 @@ class SymbolSpec:
     def is_terminal(self):
         return self.role == 'terminal'
 
+    def port_side(self, port):
+        """Which face of the symbol a port sits on, in its own frame."""
+        return self.sides[port]
+
     @property
     def from_sheet(self):
         """True when the geometry came out of the master library."""

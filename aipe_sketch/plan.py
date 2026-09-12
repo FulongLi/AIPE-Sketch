@@ -8,7 +8,7 @@ geometry by construction rather than by optimisation.
 
 from .config import (CELL_G as CELL, CHAIN_NEUTRAL, CHAIN_ROLES,
                      GAP_ADJACENT, GAP_ANCHOR, GAP_BRIDGE_LEG, GAP_GROUP,
-                     GAP_SERIES_PASSIVE, START_COL)
+                     GAP_PARALLEL_BLOCK, GAP_SERIES_PASSIVE, START_COL)
 
 # Historic aliases, kept so callers importing them from here still work.
 CLEARANCE = GAP_ADJACENT
@@ -45,6 +45,7 @@ DEFAULTS = dict(
     gap_series=GAP_SERIES_PASSIVE,
     gap_adjacent=GAP_ADJACENT,
     gap_bridge=GAP_BRIDGE_LEG,
+    gap_parallel=GAP_PARALLEL_BLOCK,
     leg_pitch=PITCH,      # fallback between legs of one bridge
     slot_pitch=PITCH,     # fallback between slots of a group
     group_gap=GROUP_PITCH,

@@ -194,6 +194,12 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     raw['crossing'] = crossings
     raw['bend'] = sum(router.bend_count(pts)
                       for ps in paths.values() for pts in ps)
+    # a bend is only "unnecessary" when the two ends were already aligned
+    raw['avoidable_bend'] = sum(
+        1 for net_paths in paths.values() for pts in net_paths
+        if router.bend_count(pts)
+        and (abs(pts[0][0] - pts[-1][0]) < TOL
+             or abs(pts[0][1] - pts[-1][1]) < TOL))
     raw['wire_length'] = round(sum(router.path_length(pts)
                                    for ps in paths.values() for pts in ps), 3)
 

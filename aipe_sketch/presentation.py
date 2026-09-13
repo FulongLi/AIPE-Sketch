@@ -26,7 +26,8 @@ def set_legacy(component, label, sub, italic):
 def text_for(component):
     if component in _legacy:
         return _legacy[component]
-    if component.kind == 'gnd' or component.interface == 'control':
+    from .electrical import is_reference
+    if is_reference(component) or component.interface == 'control':
         return SchematicText()
     if component.interface == 'power':
         return SchematicText(component.attrs.get('name', component.ref), italic=False)

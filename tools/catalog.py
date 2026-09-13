@@ -12,7 +12,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from aipe_sketch import symlib
+from aipe_sketch import config, symlib, typography
 from aipe_sketch.pins import PARTS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,8 +57,11 @@ def build(ids, out_path):
             t = ET.SubElement(svg, NS + 'text', {
                 'x': str(cx), 'y': str((i // COLS) * CH + dy),
                 'text-anchor': 'middle',
-                'style': f'font-size:{size}px;font-family:sans-serif;fill:{fill}'})
+                'style': (f'font-size:{size}px;'
+                          f'font-family:{config.FONT_FAMILY_CSS};'
+                          f'font-weight:{config.FONT_WEIGHT};fill:{fill}')})
             t.text = text
+    typography.apply_svg_font(svg)
     ET.ElementTree(svg).write(out_path, xml_declaration=True, encoding='utf-8')
     return out_path
 

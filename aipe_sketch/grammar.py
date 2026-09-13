@@ -24,9 +24,10 @@ def lower(plan, netlist):
         s = Slot(Item(ref, row, rot=rot))
         locations[ref] = s
         for gate, port in controls.get(ref, ()):
-            # Local attachment: a control interface follows its actual gate,
-            # rather than acquiring a power boundary marker or a power row.
-            s.items.append(Item(gate, row, dx=-4, dy=1))
+            # The renderer co-locates this invisible control interface with
+            # the actual gate.  The switch symbol already supplies the visible
+            # gate lead, so no additional control-line stub is drawn.
+            s.items.append(Item(gate, row))
             locations[gate] = s
         return s
 

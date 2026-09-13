@@ -29,6 +29,12 @@ inputs. The master `assets/master/Inkscape_Symbols_All.svg` remains authoritativ
 geometric constraint language retained for expert overrides and baseline tests.
 See [the audit and migration notes](docs/architecture.md).
 
+Ground domains are explicit electrical kinds. Use `power_ground` for the IEC
+earth-bar symbol and `digital_ground` (aliases `digital_gnd`, `dgnd`, or
+`signal_ground`) for the open inverted-triangle symbol. Legacy `gnd` and
+`ground` inputs resolve to `power_ground`; separate ground components remain on
+separate nets unless the circuit IR deliberately connects those nets.
+
 ## Usage
 
 ```python
@@ -162,6 +168,12 @@ should read as one continuous horizontal line. Two metrics enforce that:
 * **`near_component_bend_penalty`** penalises a corner within one local wire
   length of a passive or magnetic port -- a wire should leave a capacitor,
   inductor or transformer along that component's own axis.
+* **`port_connection_geometry`** applies the same convention to every direct
+  point-to-point power connection. The first/last segment follows the declared
+  port face, and its soft length target is one half of that component's body
+  width (side port) or height (top/bottom port). Rails, buses, grounds,
+  terminals and control nets are exempt because the floorplan sets their stub
+  length.
 
 A *series link* is a net joining exactly two components. A rail or a filter
 tap has more, and the parts on it are not in series -- without that
@@ -230,9 +242,10 @@ internal node carry none — a wire ending somewhere is never reason enough.
 Interface status is explicit metadata on the component, one of:
 
 * `interface='power'` — a main power boundary; carries the marker.
-* `interface='control'` — a gate drive or sensing port. Still a real
-  component, so connectivity stays fully checkable, but drawn as an ordinary
-  wire endpoint.
+* `interface='control'` — a gate drive or sensing port. A switch-gate
+  interface stays in Circuit IR for connectivity, but is co-located with the
+  gate in the schematic: the library symbol's own gate lead is retained and no
+  additional line segment or boundary marker is drawn.
 * `None` — not an interface. The netlist refuses a terminal without one, and
   refuses an interface on anything that is not a terminal.
 
@@ -574,13 +587,13 @@ detected repeated structure.
 avoid measuring the wrong thing:
 
 * **Rule 22 (rhythm)** counts *distinct local length scales*, not deviation
-  from a target length. A converter legitimately uses four — gate stubs, rail
-  stubs, leg midpoints, inter-stage runs — each for a different purpose, so
-  the threshold is four. Consistency *within* a role is measured exactly and
+  from a target length. A converter legitimately uses several — rail stubs,
+  leg midpoints and inter-stage runs — each for a different purpose, so
+  the threshold is five. Consistency *within* a role is measured exactly and
   separately by `local_consistency` and `wire_uniformity`, both zero
   everywhere.
 * **Rule 23 (local consistency)** compares only the power path. A DC rail is a
-  long haul set by the floorplan and a gate stub is squeezed by the leg pitch;
+  long haul set by the floorplan and control nets have no added gate stub;
   neither says anything about local regularity. Including them made every
   switching device look defective.
 * **Rule 17 (transformer)** measures the wire runs actually attached to the
@@ -592,6 +605,9 @@ avoid measuring the wrong thing:
   segments instead counted rail stubs, whose length is set by the rail
   separation rather than any local choice. The band edges are inclusive: a run
   at exactly 1.5 D was being flagged by floating-point noise.
+* **Item 23 (port leads)** checks direct component-to-component nets. Port-axis
+  alignment is required; the half-body lead length is a preference in the
+  candidate cost, so obstacle clearance and connectivity still take priority.
 
 ## Cost and quality
 

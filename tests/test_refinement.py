@@ -85,6 +85,25 @@ class TestExternalInterfaces(unittest.TestCase):
                 self.assertIsNone(part.marker,
                                   f'{name}/{ref} draws a boundary marker')
 
+    def test_gate_ports_add_no_external_line_segment(self):
+        """The switch symbol owns the visible gate lead."""
+        for name in NAMES:
+            sch, _, _, _ = built(name)
+            for net, members in sch.netlist.nets.items():
+                gate = [(r, p) for r, p in members if p == 'g']
+                if not gate:
+                    continue
+                control = [(r, p) for r, p in members
+                           if sch.netlist.components[r].interface == 'control']
+                self.assertEqual(len(gate), 1, f'{name}/{net}')
+                self.assertTrue(control, f'{name}/{net}')
+                gate_point = sch.placed[gate[0][0]].port(gate[0][1])
+                for ref, port in control:
+                    self.assertEqual(sch.placed[ref].port(port), gate_point,
+                                     f'{name}/{net}')
+                self.assertEqual(sch.paths[net], [],
+                                 f'{name}/{net} adds a gate stub')
+
     def test_only_power_interfaces_are_marked(self):
         for name in NAMES:
             sch, _, _, _ = built(name)
@@ -434,7 +453,8 @@ class TestChecklist(unittest.TestCase):
                     '19 transformer reads as one object',
                     '20 master-library symbols reused undistorted',
                     '21 local runs within 0.75-1.5 D',
-                    '22 output port only where the output is exposed'):
+                    '22 output port only where the output is exposed',
+                    '23 wires follow port axes; straight lead targets 0.5 body span'):
             self.assertIn(key, card.checks)
 
 

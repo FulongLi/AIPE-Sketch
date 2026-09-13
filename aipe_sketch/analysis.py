@@ -209,13 +209,14 @@ PARALLEL_OUTPUT_BLOCK = 'parallel_output_block'
 
 def supply_nets(netlist):
     """(positive supply, reference) as named by the source and the ground."""
+    from .electrical import is_reference
     positive = reference = None
     for net, members in netlist.nets.items():
         for ref, port in members:
             kind = netlist.components[ref].kind
             if kind in ('vsource', 'isource', 'battery') and port == 'p':
                 positive = positive or net
-            if kind == 'gnd':
+            if is_reference(netlist.components[ref]):
                 reference = reference or net
     return positive, reference
 

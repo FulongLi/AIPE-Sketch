@@ -21,7 +21,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from aipe_sketch import library, symlib
+from aipe_sketch import config, library, symlib, typography
 from aipe_sketch.paths import EXTRACTED, MASTER, MASTER_NAME, OUT, REGISTRY_JSON
 from aipe_sketch.pins import PARTS as CURATED
 
@@ -190,11 +190,13 @@ def write_catalogue(entries, section, defs, out_dir=OUT):
             t = ET.SubElement(svg, NS + 'text', {
                 'x': str(cx), 'y': str((i // cols) * ch + dy),
                 'text-anchor': 'middle',
-                'style': f'font-size:{size}px;font-family:sans-serif;'
-                         f'fill:{fill}'})
+                'style': (f'font-size:{size}px;'
+                          f'font-family:{config.FONT_FAMILY_CSS};'
+                          f'font-weight:{config.FONT_WEIGHT};fill:{fill}')})
             t.text = text
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f'catalog_{section}.svg')
+    typography.apply_svg_font(svg)
     ET.ElementTree(svg).write(path, xml_declaration=True, encoding='utf-8')
     return path
 

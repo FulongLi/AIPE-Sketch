@@ -10,7 +10,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 
 from .analysis import find_legs, find_bridges, repeated_classes
-from .electrical import CONTROL_PORTS, ROLES, power_ports
+from .electrical import CONTROL_PORTS, ROLES, is_reference, power_ports
 
 
 @dataclass(frozen=True)
@@ -49,14 +49,14 @@ def graph_analysis(netlist):
     if faults:
         raise ValueError('invalid Circuit IR: ' + '; '.join(faults))
     returns = {net for net, members in n.nets.items()
-               if any(n.components[r].kind == 'gnd' or
+               if any(is_reference(n.components[r]) or
                       ((n.components[r].role == 'source' or ROLES.get(n.components[r].kind) == 'source') and p == 'n')
                       for r, p in members)}
     sources = {r for r, c in n.components.items()
                if c.kind != 'terminal' and (c.role == 'source' or ROLES.get(c.kind) == 'source')}
     controls, interfaces, references = [], [], []
     for r, c in sorted(n.components.items()):
-        if c.kind == 'gnd':
+        if is_reference(c):
             references.append((r, n.ports_of(r)[0][0]))
         elif c.external:
             net = n.ports_of(r)[0][0]
@@ -99,7 +99,7 @@ def graph_analysis(netlist):
             occupied.update(r for l in valid for r in (l.high, l.low))
             returns.add(leg.bottom_net)
     power = {r for r, c in n.components.items()
-             if c.kind not in ('terminal', 'gnd')}
+             if c.kind != 'terminal' and not is_reference(c)}
     pairs = defaultdict(list)
     for r in sorted(power - occupied):
         c = n.components[r]

@@ -5,15 +5,15 @@ Manual comparison fixtures live in manual_topologies.py.
 from .netlist import Netlist
 
 def _gnd(nl, ref='GND1'):
-    nl.add(ref, 'gnd')
+    nl.add(ref, 'power_ground')
     return ref
 
 def _gate(nl, ref):
     """A gate drive port.
 
     It is an interface, so it stays a real component and connectivity stays
-    checkable -- but it is control, not power, so it is drawn as an ordinary
-    wire endpoint with no boundary marker.
+    checkable.  The schematic co-locates it with the switch gate, so the
+    library symbol's own gate lead is visible without an added wire stub.
     """
     nl.add(ref, 'terminal', interface='control')
     return ref

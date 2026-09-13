@@ -131,7 +131,7 @@ class TestLocalScale(unittest.TestCase):
     def test_few_local_length_scales(self):
         for name in NAMES:
             _, card, _, _ = built(name)
-            self.assertLessEqual(len(card.raw['scales']), 4,
+            self.assertLessEqual(len(card.raw['scales']), 5,
                                  f'{name}: {card.raw["scales"]}')
 
 

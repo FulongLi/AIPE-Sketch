@@ -46,9 +46,12 @@ CHAIN_NEUTRAL = frozenset({'reference', 'terminal'})
 CHAIN_FACING_MARGIN_G = 0.5  # keep-out on a side facing a chain neighbour
 
 # ------------------------------------------------------------------ labels
+FONT_FAMILY = 'Times New Roman'
+FONT_FAMILY_CSS = f"'{FONT_FAMILY}',Times,serif"
+FONT_WEIGHT = 400              # optically balanced with the 1 px circuit line
 LABEL_SIZE = 2.82222         # px, matching the sheet's own designator text
 NOTE_SIZE = 2.5              # free annotations
-GLYPH_W = 0.62               # em per glyph, sans-serif average
+GLYPH_W = 0.62               # conservative em width for collision estimates
 LINE_H = 1.15                # em, cap height plus descender
 SUBSCRIPT = 0.72             # subscript size relative to its parent
 
@@ -117,5 +120,6 @@ WIRE_WIDTH_MM = 0.264583     # 1 px at 96 dpi, the sheet's own stroke
 BAND_LO, BAND_HI = 0.75, 1.5
 CHAIN_BAND_LO, CHAIN_BAND_HI = 0.4, 1.0   # a chain is packed tighter
 BAND_EPS = 1e-4                            # band edges are inclusive
+PORT_LEAD_RATIO = 0.5       # straight lead target vs body span on that axis
 
 SHEET_MARGIN_MM = 2 * G      # breathing room around the drawn content

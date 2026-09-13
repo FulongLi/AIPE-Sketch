@@ -103,6 +103,8 @@ class TestTopologies(unittest.TestCase):
         for name in NAMES:
             sch, _, _, _ = built(name)
             for ref, part in sch.placed.items():
+                if part.interface == 'control':
+                    continue       # metadata-only point, co-located with gate
                 for value in (part.x, part.y):
                     self.assertLess(abs(value / G - round(value / G)), 1e-3,
                                     f'{name}/{ref} is off grid')

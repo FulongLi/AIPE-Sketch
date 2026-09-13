@@ -43,7 +43,8 @@ class TestLookupPriority(unittest.TestCase):
     """Standard devices must come from the library, never be redrawn."""
 
     STANDARD = ('nmos', 'igbt', 'diode', 'cap', 'cap_pol', 'res', 'ind',
-                'ind_core', 'vsource', 'isource', 'battery', 'gnd')
+                'ind_core', 'vsource', 'isource', 'battery',
+                'power_ground', 'digital_ground')
 
     def test_standard_devices_come_from_the_library(self):
         for kind in self.STANDARD:
@@ -98,9 +99,18 @@ class TestRegistryAccess(unittest.TestCase):
         for alias, kind in (('capacitor', 'cap'), ('resistor', 'res'),
                             ('inductor', 'ind'), ('voltage_source', 'vsource'),
                             ('current_source', 'isource'), ('mosfet', 'nmos'),
-                            ('ground', 'gnd')):
+                            ('ground', 'power_ground'),
+                            ('digital_gnd', 'digital_ground')):
             self.assertEqual(registry().get(alias).kind, kind, alias)
             self.assertIn(alias, registry())
+
+    def test_power_and_digital_ground_are_distinct_library_devices(self):
+        power = registry()['power_ground']
+        digital = registry()['digital_ground']
+        self.assertEqual(power.role, 'reference')
+        self.assertEqual(digital.role, 'reference')
+        self.assertNotEqual(power.symbol_id, digital.symbol_id)
+        self.assertNotEqual(power.bbox, digital.bbox)
 
     def test_metadata_matches_the_documented_schema(self):
         for kind, spec in registry().items():

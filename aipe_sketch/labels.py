@@ -117,7 +117,8 @@ class LabelPlacer:
         self.placed = placed
         self.paths = paths
         self.bodies = [p for p in placed.values()
-                       if p.spec.width > TOL or p.spec.height > TOL]
+                       if p.interface != 'control'
+                       and (p.spec.width > TOL or p.spec.height > TOL)]
         self.segments = [seg for net_paths in paths.values()
                          for pts in net_paths
                          for seg in router.path_segments(pts)]

@@ -21,7 +21,7 @@ INPUT_LABEL = ('V', 'in')
 
 
 def _gnd(nl, ref='GND1'):
-    nl.add(ref, 'gnd')
+    nl.add(ref, 'power_ground')
     return ref
 
 

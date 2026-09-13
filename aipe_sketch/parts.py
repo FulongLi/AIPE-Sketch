@@ -78,7 +78,7 @@ class SymbolSpec:
     """Everything the placer, router and renderer need about one kind."""
 
     def __init__(self, kind, symbol_id, ports, bbox, role, compound=None,
-                 default_rotation=0, cleaned=None):
+                 default_rotation=0, cleaned=None, port_sides=None):
         self.kind = kind
         self.symbol_id = symbol_id
         self.default_rotation = default_rotation
@@ -86,7 +86,8 @@ class SymbolSpec:
         self.bbox = bbox                    # (x0, y0, x1, y1) from the anchor
         self.role = role
         self.compound = compound
-        self.sides = {p: _side_of(o) for p, o in ports.items()}
+        self.sides = dict(port_sides or
+                          {p: _side_of(o) for p, o in ports.items()})
         decor = dict(DECOR.get(kind, {}))
         if compound:
             for key in ('strokes', 'texts', 'circles'):
@@ -208,7 +209,8 @@ class Registry:
             self._specs[kind] = SymbolSpec(
                 kind, entry['sym'], dict(entry['pins']),
                 (x0 - ax, y0 - ay, x1 - ax, y1 - ay),
-                ROLES.get(kind, 'generic'), cleaned=keep)
+                ROLES.get(kind, 'generic'), cleaned=keep,
+                port_sides=entry.get('sides'))
         for kind, entry in COMPOUND.items():
             self._specs[kind] = SymbolSpec(
                 kind, None, dict(entry['ports']), entry['bbox'],

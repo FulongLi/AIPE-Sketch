@@ -11,7 +11,7 @@ GATE_DX = -4
 
 
 def _gnd(n, ref='GND1'):
-    n.add(ref, 'gnd')
+    n.add(ref, 'power_ground')
     return ref
 
 

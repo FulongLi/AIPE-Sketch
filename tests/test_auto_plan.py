@@ -87,6 +87,25 @@ class CircuitIRTests(unittest.TestCase):
         self.assertEqual(n.validate(), [])
         self.assertEqual(n.components['R'].kind, 'res')
 
+    def test_power_and_digital_ground_stay_separate(self):
+        n = Netlist('split references')
+        n.add('R1', 'res')
+        n.add('R2', 'res')
+        n.add('PGND', 'power_ground')
+        n.add('DGND', 'digital_ground')
+        n.add('A', 'terminal', interface='power')
+        n.add('B', 'terminal', interface='power')
+        n.connect('power', 'A.t', 'R1.a')
+        n.connect('power_return', 'R1.b', 'PGND.t')
+        n.connect('digital', 'B.t', 'R2.a')
+        n.connect('digital_return', 'R2.b', 'DGND.t')
+        self.assertEqual(n.validate(), [])
+        self.assertNotEqual(n.net_of('PGND', 't'), n.net_of('DGND', 't'))
+        plan = auto_plan(n)
+        self.assertCountEqual(plan.references,
+                              (('PGND', 'power_return'),
+                               ('DGND', 'digital_return')))
+
 
 class PlannerTests(unittest.TestCase):
     def test_all_builders_end_at_ir(self):

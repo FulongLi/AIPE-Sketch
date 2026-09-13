@@ -55,6 +55,7 @@ class Schematic:
             self.semantic_plan = getattr(plan, 'semantic', None)
         self.plan = plan
         self.placed, self.extents = placement.place(plan, netlist, self.specs, text=text)
+        self._coalesce_gate_interfaces()
 
         if text:
             for ref, style in text.items():
@@ -76,6 +77,36 @@ class Schematic:
         self.texts = []
         self._notes = []          # free annotations, kept across label rebuilds
         self.homeless_labels = []
+
+    def _coalesce_gate_interfaces(self):
+        """Put an invisible control interface directly on its switch gate.
+
+        The library symbol already contains the visible gate lead.  A control
+        terminal remains in Circuit IR so connectivity is explicit, but its
+        port is made coincident with the gate instead of drawing an extra stub.
+        """
+        from .electrical import CONTROL_PORTS
+        for members in self.netlist.nets.values():
+            gates = [(ref, port) for ref, port in members
+                     if port in CONTROL_PORTS.get(
+                         self.netlist.components[ref].kind, ())]
+            controls = [(ref, port) for ref, port in members
+                        if self.netlist.components[ref].interface == 'control']
+            if len(gates) != 1:
+                continue
+            target = self.placed[gates[0][0]].port(gates[0][1])
+            for ref, port in controls:
+                part = self.placed[ref]
+                ox, oy = placement._transform(
+                    part.spec.ports[port], part.rot, part.mirror)
+                part.x, part.y = target[0] - ox, target[1] - oy
+                part.ports = {name: tuple(round(v, 4) for v in (
+                    part.x + placement._transform(offset, part.rot,
+                                                  part.mirror)[0],
+                    part.y + placement._transform(offset, part.rot,
+                                                  part.mirror)[1]))
+                    for name, offset in part.spec.ports.items()}
+                part.bbox = (target[0], target[1], target[0], target[1])
 
     @classmethod
     def from_netlist(cls, circuit, *, source=None, plan=None, text=None,
@@ -125,6 +156,11 @@ class Schematic:
         for net, members in ordered:
             pts = [self.placed[ref].port(port) for ref, port in members]
             if len(pts) < 2:
+                continue
+            if (max(p[0] for p in pts) - min(p[0] for p in pts) < router.TOL
+                    and max(p[1] for p in pts) - min(p[1] for p in pts)
+                    < router.TOL):
+                self.paths[net] = []
                 continue
             spec = trunks.get(net)
             local_trunk = False

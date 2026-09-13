@@ -83,8 +83,15 @@ def extract(placed, paths):
         for port, pt in part.ports.items():
             terminals.append(((ref, port), pt))
 
-    for key, pt in terminals:
+    for index, (key, pt) in enumerate(terminals):
         uf.find(('t', key))
+        # Coincident ports are a direct connection even when no extra wire is
+        # drawn.  Gate-control interfaces use this intentionally because the
+        # switch symbol already contains its visible gate lead.
+        for other, other_pt in terminals[:index]:
+            if (abs(pt[0] - other_pt[0]) < TOL
+                    and abs(pt[1] - other_pt[1]) < TOL):
+                uf.union(('t', key), ('t', other))
         for i, seg in enumerate(segs):
             if _on_segment(pt, seg):
                 uf.union(('t', key), ('s', i))

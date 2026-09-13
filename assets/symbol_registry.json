@@ -4297,7 +4297,7 @@
         "x": 30.5607,
         "y": 96.5781
       },
-      "curated_as": "gnd",
+      "curated_as": "digital_ground",
       "default_orientation": "vertical",
       "file": "assets/extracted_library/earth_symbols/gnd__g9380.svg",
       "flags": [],
@@ -4338,7 +4338,7 @@
         "x": 35.8524,
         "y": 96.5781
       },
-      "curated_as": null,
+      "curated_as": "power_ground",
       "default_orientation": "vertical",
       "file": "assets/extracted_library/earth_symbols/gnd__g9386.svg",
       "flags": [],
@@ -4382,7 +4382,9 @@
           97.901
         ]
       ],
-      "ports": null,
+      "ports": [
+        "t"
+      ],
       "section": "earth_symbols",
       "source_file": "Inkscape_Symbols_All.svg",
       "source_type": "extracted_library",

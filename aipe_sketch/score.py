@@ -40,6 +40,7 @@ WEIGHTS = {
     'redundant_annotation': 2000,
     'centreline_deviation': 3000,
     'near_component_bend': 1500,
+    'port_lead': 300,
     'shunt_balance': 4000,
     'shunt_detour': 30000,
     'symbol_distortion': 60000,
@@ -205,7 +206,8 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
                                    for ps in paths.values() for pts in ps), 3)
 
     # -- alignment ---------------------------------------------------
-    off = sum(1 for p in parts for v in (p.x, p.y)
+    off = sum(1 for p in parts if p.interface != 'control'
+              for v in (p.x, p.y)
               if abs(v / G - round(v / G)) > 1e-3)
     raw['alignment'] = off
 
@@ -341,6 +343,10 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
     raw['near_component_bend'], bend_faults = \
         drawing_rules.near_component_bend_penalty(netlist, placed, paths)
     faults += bend_faults[:4]
+    raw['port_lead'], port_axis_faults, raw['port_lead_report'] = \
+        drawing_rules.port_connection_geometry(netlist, placed, paths)
+    raw['port_axis_mismatch'] = len(port_axis_faults)
+    faults += port_axis_faults
 
     raw['shunt_balance'], shunt_faults, raw['shunt_branches'] = \
         drawing_rules.shunt_branch_balance(netlist, placed, paths)
@@ -375,7 +381,8 @@ def evaluate(netlist, placed, paths, labels, classes, bounds=None,
         'alignment': _clamp(100 - 20 * raw['alignment']),
         'routing': _clamp(100 - 100 * raw['bend'] / (3 * nnets)
                           - 60 * raw['wire_uniformity'] / max(1, nnets)
-                          - 25 * raw['routing_shape']),
+                          - 25 * raw['routing_shape']
+                          - 5 * raw['port_lead'] / nnets),
         'power_path': _clamp(100 - 40 * raw['centreline_deviation']
                              - 30 * raw['near_component_bend']
                              - 45 * raw['shunt_balance']

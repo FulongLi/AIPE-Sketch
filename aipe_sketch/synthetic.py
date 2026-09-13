@@ -5,7 +5,7 @@ Manual comparison fixtures live in manual_synthetic.py.
 from .netlist import Netlist
 
 def _gnd(n, ref='GND1'):
-    n.add(ref, 'gnd')
+    n.add(ref, 'power_ground')
     return ref
 
 def series_rlc():

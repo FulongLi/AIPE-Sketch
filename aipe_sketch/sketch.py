@@ -9,7 +9,7 @@ import math
 import re
 import xml.etree.ElementTree as ET
 
-from . import config, symlib
+from . import config, symlib, typography
 from .pins import PARTS, COARSE, GRID
 
 NS = symlib.NS
@@ -104,8 +104,9 @@ class Sketch:
               anchor='middle', italic=True):
         """Designator text.  ``sub`` renders as a subscript, e.g. C/'out'."""
         style = (f"font-style:{'italic' if italic else 'normal'};"
-                 f"font-weight:normal;font-size:{size}px;"
-                 f"font-family:sans-serif;fill:#000000;stroke:none")
+                 f"font-weight:{config.FONT_WEIGHT};font-size:{size}px;"
+                 f"font-family:{config.FONT_FAMILY_CSS};"
+                 f"fill:#000000;stroke:none")
         t = ET.SubElement(self.layer, NS + 'text',
                           {'x': str(x), 'y': str(y),
                            'text-anchor': anchor, 'style': style})
@@ -151,6 +152,7 @@ class Sketch:
 
     def save(self, path):
         self._prune_defs()
+        typography.apply_svg_font(self.svg)
         ET.ElementTree(self.svg).write(path, xml_declaration=True,
                                        encoding='utf-8')
         return path

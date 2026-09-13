@@ -122,6 +122,30 @@ class TestBendsNearPassives(unittest.TestCase):
                                 f'Lr.{port} leaves vertically')
 
 
+class TestPortConnectionRule(unittest.TestCase):
+    """Point-to-point connections follow the port axis and half-span lead."""
+
+    def test_all_outputs_leave_point_to_point_ports_on_axis(self):
+        for name in NAMES:
+            _, card, _, _ = built(name)
+            self.assertEqual(card.raw['port_axis_mismatch'], 0,
+                             f'{name}: {card.faults}')
+
+    def test_half_a_body_span_is_the_preferred_lead_length(self):
+        self.assertEqual(dr.lead_length_penalty(5, 10), 0)
+        self.assertGreater(dr.lead_length_penalty(10, 10), 0)
+
+    def test_a_wire_leaving_across_the_port_axis_is_detected(self):
+        sch, _, _, _ = built('llc_resonant')
+        port = sch.placed['Lr'].port('a')
+        bad = dict(sch.paths)
+        bad['RES'] = [[port, (port[0], port[1] - G),
+                       sch.placed['Cr'].port('b')]]
+        _, faults, _ = dr.port_connection_geometry(
+            sch.netlist, sch.placed, bad)
+        self.assertTrue(any('Lr.a' in fault for fault in faults), faults)
+
+
 class TestChainSpacing(unittest.TestCase):
     """Rules 4, 5, 7: a chain is tighter than a functional boundary."""
 

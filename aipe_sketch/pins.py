@@ -65,12 +65,18 @@ PARTS = {
                         keep=('path5742', 'path5744', 'use6557-2',
                               'use6557-0', 'g6472-8', 'g6472-7'),
                         pins={'p1': (-3.307, -H), 'p2': (-3.307, H),
-                              's1': (3.307, -H), 's2': (3.307, H)}),
+                              's1': (3.307, -H), 's2': (3.307, H)},
+                        sides={'p1': 'left', 'p2': 'left',
+                               's1': 'right', 's2': 'right'}),
 
     # --- misc --------------------------------------------------------
-    # the GND anchor is its connection point, not a bbox centre
-    'gnd':      dict(sym='g9380',  anchor=(31.884, 96.578),
-                     pins={'t': (0, 0)}),
+    # Ground anchors are their connection points, not bbox centres.  Power
+    # ground uses the IEC earth bars; digital/signal ground uses the open
+    # inverted triangle so the two reference domains remain visible.
+    'power_ground': dict(sym='g9386', anchor=(37.175, 96.578),
+                         pins={'t': (0, 0)}),
+    'digital_ground': dict(sym='g9380', anchor=(31.884, 96.578),
+                           pins={'t': (0, 0)}),
 }
 
 # Symbols in the master sheet whose <symbol> wrapper drags in geometry from

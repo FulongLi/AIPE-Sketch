@@ -6,6 +6,7 @@ every check here runs across the whole catalogue.
 import os
 import sys
 import unittest
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -233,6 +234,23 @@ class TestConstantsCentralised(unittest.TestCase):
                 self.assertIsNone(literal,
                                   f'{fname} redefines {name} as a literal')
 
+
+class TestTypography(unittest.TestCase):
+    """Every final drawing follows the single project font policy."""
+
+    def test_all_rendered_text_uses_the_project_font(self):
+        for name in NAMES:
+            _, _, _, path = built(name)
+            root = ET.parse(path).getroot()
+            text_nodes = [node for node in root.iter()
+                          if node.tag.rsplit('}', 1)[-1] in ('text', 'tspan')]
+            self.assertTrue(text_nodes, name)
+            for node in text_nodes:
+                style = node.get('style', '')
+                self.assertIn(f'font-family:{config.FONT_FAMILY_CSS}', style,
+                              f'{name}: {ET.tostring(node, encoding="unicode")}')
+                self.assertIn(f'font-weight:{config.FONT_WEIGHT}', style, name)
+                self.assertNotIn('sans-serif', style, name)
 
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)

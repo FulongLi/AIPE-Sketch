@@ -11,7 +11,8 @@ from .router import TOL
 from .config import (BAND_EPS, BAND_HI, BAND_LO, CELL_MM as CELL,
                      CHAIN_BAND_HI, CHAIN_BAND_LO, CHAIN_NEUTRAL,
                      CHAIN_ROLES, LABEL_PAD_X_MM as LABEL_PAD_X,
-                     LABEL_PAD_Y_MM as LABEL_PAD_Y, LONG_RUN_MM as LONG_RUN)
+                     LABEL_PAD_Y_MM as LABEL_PAD_Y, LONG_RUN_MM as LONG_RUN,
+                     PORT_LEAD_RATIO)
 from .pins import COARSE as G
 
 CONTROL_PORTS = ('g',)       # gate leads are not part of the power path
@@ -28,6 +29,57 @@ def _length(seg):
 
 def _same(a, b):
     return abs(a[0] - b[0]) < TOL and abs(a[1] - b[1]) < TOL
+
+
+def _port_axis(part, port):
+    """0 for a horizontal lead, 1 for a vertical lead, after rotation."""
+    side = part.spec.port_side(port)
+    axis = 0 if side in ('left', 'right') else 1
+    return 1 - axis if part.rot % 180 else axis
+
+
+def lead_length_penalty(length, body_span):
+    """Soft cost around a straight lead of half the component body span."""
+    target = max(TOL, PORT_LEAD_RATIO * body_span)
+    return ((length - target) / target) ** 2
+
+
+def port_connection_geometry(netlist, placed, paths):
+    """Prefer point-to-point wires that leave each port on its own axis.
+
+    The straight segment at a port targets half the component's width for a
+    side port, or half its height for a top/bottom port.  Rails, buses,
+    terminals, grounds and control nets are excluded because their stub length
+    is set by the floorplan rather than by a neighbouring component.
+    """
+    penalty, axis_faults, report = 0.0, [], []
+    for net, members in netlist.nets.items():
+        if net not in paths or len(members) != 2:
+            continue
+        if any(port in CONTROL_PORTS for _, port in members):
+            continue
+        if any(r not in placed or placed[r].spec.role in CHAIN_NEUTRAL
+               for r, _ in members):
+            continue
+        segs = [seg for pts in paths[net] for seg in router.path_segments(pts)]
+        for ref, port in members:
+            part, point = placed[ref], placed[ref].port(port)
+            axis = _port_axis(part, port)
+            attached = [seg for seg in segs
+                        if _same(seg[0], point) or _same(seg[1], point)]
+            aligned = [seg for seg in attached
+                       if abs(seg[0][1 - axis] - seg[1][1 - axis]) < TOL]
+            if not aligned:
+                penalty += 4.0
+                axis_faults.append(
+                    f'net {net} does not leave {ref}.{port} on its port axis')
+                continue
+            length = min(_length(seg) for seg in aligned)
+            span = part.bbox[axis + 2] - part.bbox[axis]
+            penalty += lead_length_penalty(length, span)
+            report.append((ref, port, round(length, 3),
+                           round(PORT_LEAD_RATIO * span, 3)))
+    return round(penalty, 4), axis_faults, report
 
 
 # ------------------------------------------------------------------ rule 3
@@ -95,12 +147,12 @@ def rhythm(paths, tol=0.15):
             scales[-1].append(value)
     modes = [round(mean(group), 3) for group in scales]
     # a handful of repeated scales is the goal; beyond that it reads arbitrary
-    # The hard requirement is few scales.  Four is still few: a converter
-    # legitimately has gate stubs, rail stubs, leg midpoints and inter-stage
-    # runs, each a different purpose.  Consistency *within* a role is
+    # The hard requirement is few scales.  Five is still a small vocabulary:
+    # rail stubs, leg midpoints, half-body port leads and inter-stage runs can
+    # each have a distinct purpose.  Consistency *within* a role is
     # measured exactly by local_consistency and wire_uniformity, so this
     # only catches genuinely arbitrary distances.
-    excess = max(0, len(modes) - 4)
+    excess = max(0, len(modes) - 5)
     dominant = max(scales, key=len)
     drift = abs(mean(dominant) - 1.0)
     return round(excess + 0.3 * drift, 4), modes
@@ -454,6 +506,9 @@ def checklist(raw, netlist, placed, paths, structure, groups, notes=()):
         '22 output port only where the output is exposed': ok(
             raw['redundant_annotation'] == 0,
             _boundary_verdict(placed, notes)),
+        '23 wires follow port axes; straight lead targets 0.5 body span': ok(
+            raw['port_axis_mismatch'] == 0,
+            f"lead preference penalty {raw['port_lead']}"),
     }
 
 
@@ -752,6 +807,8 @@ def symbol_integrity(placed, registry):
     """
     faults = []
     for ref, part in placed.items():
+        if part.interface == 'control':
+            continue            # metadata-only; no symbol is rendered
         spec = registry.get(part.kind)
         if spec is None:
             faults.append(f'{ref}: {part.kind} is not in the registry')

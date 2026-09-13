@@ -38,6 +38,8 @@ class Placed:
 
     @property
     def body_bbox(self):
+        if self.interface == 'control':
+            return (self.x, self.y, self.x, self.y)
         return _bbox_after(self.spec.bbox, self.rot, self.mirror, self.x, self.y)
 
     @property

@@ -129,7 +129,7 @@ def write_registry(entries, version, path=REGISTRY_JSON):
             'file': os.path.relpath(
                 os.path.join(EXTRACTED, e['source_section'],
                              f'{e["semantic_name"]}.svg'),
-                os.path.dirname(os.path.dirname(EXTRACTED))),
+                os.path.dirname(os.path.dirname(EXTRACTED))).replace(os.sep, '/'),
             'symbol_id': e['original_symbol_id'],
             'title': e['title'],
             'source_file': e['source_file'],

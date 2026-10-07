@@ -3,6 +3,11 @@
 Generate a schematic from an electrical circuit graph, the master symbol library,
 and a general drawing grammar. The schematic is a view of the circuit.
 
+AIPE means **AI for Power Engineering**. This repository is the ecosystem's
+schematic Tool. Its [capability manifest](aipe.yaml) and
+[Engineering State mapping](docs/engineering-state.md) connect explicit Circuit IR
+to Core state and hash-linked SVG artifacts without changing the rendering pipeline.
+
 ## Pipeline
 
 ```
@@ -60,6 +65,9 @@ python3 build.py --manual buck           # preserved manual baseline
 python3 build.py --checks
 python3 -m unittest discover -s tests
 ```
+
+On Windows, use `python -X utf8 -m unittest discover -s tests` so existing
+UTF-8 symbol/library fixtures are read consistently across system locales.
 
 `topologies.CIRCUITS` and `synthetic.CIRCUITS` contain Netlist-only builders.
 The old `CATALOGUE` / `SYNTHETIC` tuple-returning maps remain compatibility

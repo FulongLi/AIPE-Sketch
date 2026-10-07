@@ -1,0 +1,29 @@
+schema_version: 0.1.0
+id: aipe.sketch
+name: AIPE Sketch
+type: tool
+domains: [power-electronics, circuit-documentation]
+description: Render explicit electrical Circuit IR into connectivity-checked SVG schematic artifacts with provenance.
+status: active
+maturity: usable
+repository: https://github.com/FulongLi/AIPE-Sketch
+license: NOASSERTION
+capabilities: [schematic-generation, circuit-connectivity-validation]
+inputs:
+  - {name: circuit-ir, description: Explicit versioned Netlist electrical graph.}
+  - {name: engineering-state, description: Core state with an explicit aipe.sketch circuit extension., schema: 'https://raw.githubusercontent.com/FulongLi/AIPE-Core/v0.1.0/schemas/engineering-state.schema.json'}
+outputs:
+  - {name: schematic-svg, description: SVG with unchanged electrical connectivity.}
+  - {name: provenance, description: Hash-linked artifact and source-state metadata.}
+dependencies:
+  - {id: aipe.core, version: 0.1.x, optional: false}
+compatibility: {core: 0.1.x, engineering_state: 0.1.x, integration: mapped}
+tools:
+  - {id: python, name: Python, capabilities: [schematic-generation], licence_class: open_source, optional: false, interfaces: [python, cli], platforms: [linux, windows, macos], url: 'https://www.python.org/', limitations: ['Drawing connectivity validation is not physical validation.']}
+  - {id: inkscape, name: Inkscape, capabilities: [svg-editing], licence_class: open_source, optional: true, interfaces: [cli, gui], platforms: [linux, windows, macos], url: 'https://inkscape.org/', limitations: ['Manual editing may invalidate original connectivity and artifact hashes.']}
+connectors: []
+validation:
+  status: tested
+  evidence: [tests/test_state.py, tests/test_pipeline.py]
+  limitations: [Explicit Circuit IR and complete Core validation are required separately; no device sizing or physical results are inferred.]
+documentation: [README.md, docs/engineering-state.md, docs/architecture.md]
